@@ -12,6 +12,7 @@ LOCAL_ADD_INCLUDE := \
                     platform/std_inc \
                     platform/OpenAT_inc \
 					api/include \
+					cust_src/app/mqtt/inc
 
 # Set this to any non-null string to signal a module which 
 # generates a binary (must contain a "main" entry point). 

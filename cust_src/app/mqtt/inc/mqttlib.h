@@ -1,5 +1,5 @@
-#ifndef __IOT_MQTT_API_H__
-#define __IOT_MQTT_API_H__
+#ifndef __MQTT_H__
+#define __MQTT_H__
 
 #include "am_openat.h"
 #include "iot_types.h"

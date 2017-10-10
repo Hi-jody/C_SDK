@@ -24,7 +24,7 @@
 #include "iot_debug.h"
 #include "iot_network.h"
 #include "iot_socket.h"
-#include "iot_mqtt_api.h"
+#include "mqttlib.h"
 
 typedef struct {
     UINT8 Type;

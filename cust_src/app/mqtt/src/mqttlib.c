@@ -1,5 +1,5 @@
 #include "string.h"
-#include "iot_mqtt_api.h"
+#include "mqttlib.h"
 #include "iot_socket.h"
 #include "iot_debug.h"
 #define DBG_INFO(X, Y...)	iot_debug_print("%s %d:"X, __FUNCTION__, __LINE__, ##Y)
