@@ -13,7 +13,7 @@
 #include "am_openat_common.h"
 
 /****************************** SYSTEM ******************************/
-#define OPENAT_CUST_TASKS_PRIORITY_BASE 235
+#define OPENAT_CUST_TASKS_PRIORITY_BASE 201
 #define OPENAT_SEMAPHORE_TIMEOUT_MIN_PERIOD 5 //5ms
 
 /* 线程主入口函数，参数 pParameter 为 create_task 接口传入的参数 */
@@ -115,7 +115,9 @@ typedef enum
 	/*!< 链路正在激活 */
 	OPENAT_NETWORK_LINKING,
     /*!< 链路已经激活 PDP已经激活，可以通过socket接口建立数据连接*/
-	OPENAT_NETWORK_LINKED
+	OPENAT_NETWORK_LINKED,
+	/*!< 链路正在去激活 */
+	OPENAT_NETWORK_GOING_DOWN,
 }E_OPENAT_NETWORK_STATE;
 
 typedef struct

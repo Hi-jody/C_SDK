@@ -382,6 +382,8 @@ struct hostent
 #define SOCK_EVENT_DESTROYED  0x0080
 #define SOCK_EVENT_LISTENING  0x0100
 #define SOCK_EVENT_RECV_DATA 0x0200
+#define SOCK_EVENT_DELIVERD 0x0400
+#define SOCK_EVENT_ERROR 0x0800
 
 typedef enum
 {

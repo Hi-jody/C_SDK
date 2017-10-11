@@ -860,6 +860,7 @@ typedef struct
 {
   BOOL          fullDuplex;                  /*TRUE: DI/DO FALSE: DO only*/
   BOOL          cpol;                        /*FALSE: spi_clk idle状态为0 TRUE: spi_clk idle状态为 1*/
+  BOOL          withCS;                      /*暂时不用，设置为TRUE*/
   uint8         cpha;                        /*0~1 0:第一个clk的跳变沿传输数据，1:第二个clk跳变沿传输数据 ...*/
   uint8         dataBits;                    /*4~32*/
   uint32        clock;                       /*110k~13M*/
@@ -1184,8 +1185,10 @@ typedef enum
     /*-\BUG WM-632\lifei\2013.03.04\[OpenAT] Audio接口实现有类型转换的风险*/
 }E_AMOPENAT_AUDIO_CHANNEL;
 
-
+/*-\BUG\zhuwangbin\2017.7.26\修改OPENAT_PlayMusic接口, 通过callback传输接下来播放的长度*/
 typedef void (*AUD_PLAY_CALLBACK_T)(E_AMOPENAT_PLAY_ERROR result, int *len);
+/*-\BUG\zhuwangbin\2017.7.26\修改OPENAT_PlayMusic接口, 通过callback传输接下来播放的长度*/
+
 /*+\NewReq WM-584\maliang\2013.2.21\[OpenAt]支持T卡播放MP3*/
 typedef struct T_AMOPENAT_PLAY_BUFFER_PARAM_TAG
 {
