@@ -1,5 +1,4 @@
 /*
- *
  * 1、DEMO基于MQTT-3.1.1协议编写，测试用客户端MQTT.fx-1.3.0，简单演示了报文类型1~14的使用方法，
  *   并且启用了会话清理功能，因此也不使用消息重试功能
  * 2、DEMO订阅2个主题，air202/gprs/tx,air202/ctrl，为防止冲突，请用户修改为其他主题
@@ -11,7 +10,7 @@
  * 7、DEMO所有报文长度限制在1460，可以修改
  * ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
  * 8、DEMO不处理服务器的粘包，QOS控制只采用最简单的顺序控制
- *   在测试时，不要短时间内（1S）在客户端上快速发布多条消息，尤其是QOS2的消息
+ *   在测试时，如果没有修改DEMO，DEMO订阅主题使用QOS2，不要短时间内（1S）在客户端上快速发布多条消息，尤其是QOS2的消息
  *   可能会导致DEMO中QOS控制逻辑出错或者收到粘包
  * 9、建议在客户端接收到模块返回的信息（和客户端发布的是一样的内容），再发布下一条
  * ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
@@ -277,6 +276,7 @@ static int32_t MQTT_Connect(int32_t Socketfd)
 //MQTT订阅主题过程
 static int32_t MQTT_Subscribe(int32_t Socketfd)
 {
+	int i;
 	uint32_t TxLen;
 	int32_t RxLen;
 	MQTT_HeadStruct Rxhead;
@@ -308,17 +308,22 @@ static int32_t MQTT_Subscribe(int32_t Socketfd)
 		return -1;
 	}
 
-	switch (PayloadBuffer.Data[0])
+	//订阅了多少个主题，就有多少个回复字节
+	for (i = 0; i < sizeof(DemoSub)/sizeof(MQTT_SubscribeStruct);i++)
 	{
-	case 0:
-	case 1:
-	case 2:
-		DBG_INFO("Subscribe ok %02x", PayloadBuffer.Data[0]);
-		return 1;
-	default:
-		DBG_ERROR("Subscribe fail %02x", PayloadBuffer.Data[0]);
-		return -1;
+		switch (PayloadBuffer.Data[i])
+		{
+		case 0:
+		case 1:
+		case 2:
+			DBG_INFO("Subscribe %d ok %02x", i,PayloadBuffer.Data[0]);
+			break;
+		default:
+			DBG_ERROR("Subscribe fail %02x", PayloadBuffer.Data[0]);
+			return -1;
+		}
 	}
+	return 1;
 }
 
 //MQTT 取消订阅主题过程
