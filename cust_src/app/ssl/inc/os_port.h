@@ -46,6 +46,7 @@ extern "C" {
 #include "iot_os.h"
 #include "string.h"
 #include "iot_socket.h"
+#include "iot_debug.h"
 #define __AIR202__
 #if defined(WIN32)
 #define STDCALL                 __stdcall
@@ -294,6 +295,7 @@ enum
 #define malloc		iot_os_malloc
 #define realloc		iot_os_realloc
 #define free		iot_os_free
+#define printf(X, Y...)		iot_debug_print(X,##Y)
 extern int OS_SocketRead(int SocketFd, void *Buf, uint16_t Len);
 extern int OS_SocketWrite(int SocketFd, void *Buf, uint16_t Len);
 #define abort()

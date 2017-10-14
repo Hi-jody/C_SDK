@@ -283,7 +283,7 @@ void AES_cbc_encrypt(AES_CTX *ctx, const uint8_t *msg, uint8_t *out, int length)
         msg += AES_BLOCKSIZE;
 
         for (i = 0; i < 4; i++)
-            tin[i] = ntohl(msg_32[i])^tout[i];
+            tin[i] = (ntohl(msg_32[i]))^tout[i];
 
         AES_encrypt(ctx, tin);
 

@@ -144,7 +144,14 @@ static int32_t Socket_ConnectServer(void)
 	}
 }
 
-static int32_t SSL_TCPTx(int32_t Socketfd, void *Buf, uint16_t TxLen)
+/**
+ * @brief 发送SSL封装好的数据，如果使用socket编程的，可以直接参考，如果使用AT指令编程的，那么需要自己来实现
+ * @param Socketfd [in] socket id，如果是AT指令，单路链接，传入0，不用管，多路链接的，传入CIPSTART时用的通道号
+ * @param Buf [in] 需要发送数据的指针
+ * @param TxLen [in] 需要发送的长度
+ * @return  返回发送的长度， -1表示发送失败.
+ */
+static int32_t SSL_SocketTx(int32_t Socketfd, void *Buf, uint16_t TxLen)
 {
     struct timeval tm;
     fd_set WriteSet;
@@ -154,7 +161,7 @@ static int32_t SSL_TCPTx(int32_t Socketfd, void *Buf, uint16_t TxLen)
 	if (Result < 0)
 	{
 		DBG_ERROR("TCP %d %d", Result, socket_errno(Socketfd));
-		return Result;
+		return -1;
 	}
     FD_ZERO(&WriteSet);
     FD_SET(Socketfd, &WriteSet);
@@ -173,7 +180,14 @@ static int32_t SSL_TCPTx(int32_t Socketfd, void *Buf, uint16_t TxLen)
     }
 }
 
-static int32_t SSL_TCPRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
+/**
+ * @brief 接收SSL封装好的数据，如果使用socket编程的，可以直接参考，如果使用AT指令编程的，那么需要自己来实现
+ * @param Socketfd [in] socket id，如果是AT指令，单路链接，传入0，不用管，多路链接的，传入CIPSTART时用的通道号
+ * @param Buf [in] 存放接收数据的指针
+ * @param TxLen [in] 需要接收的长度，可能会超出本次接收的长度，没关系
+ * @return  返回接收的长度， -1表示接收失败.
+ */
+static int32_t SSL_SocketRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
 {
     struct timeval tm;
     fd_set ReadSet;
@@ -189,18 +203,19 @@ static int32_t SSL_TCPRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
         if(Result == 0)
         {
         	DBG_ERROR("socket close!");
-        	iot_os_free(Buf);
             return -1;
         }
         else if(Result < 0)
         {
         	DBG_ERROR("recv error %d", socket_errno(Socketfd));
-        	iot_os_free(Buf);
             return -1;
         }
 		return Result;
     }
-    return Result;
+    else
+    {
+    	return -1;
+    }
 }
 
 static void SSL_Task(PVOID pParameter)
@@ -355,7 +370,7 @@ static void SSL_TimerHandle(T_AMOPENAT_TIMER_PARAMETER *pParameter)
 
 }
 
-VOID app_main(VOID)
+void app_main(void)
 {
     iot_network_set_cb(SSL_NetworkIndCallBack);
 	hSocketTask = iot_os_create_task(SSL_Task,

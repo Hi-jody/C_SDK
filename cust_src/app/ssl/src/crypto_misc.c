@@ -220,8 +220,9 @@ EXP_FUNC int STDCALL get_random(int num_rand_bytes, uint8_t *rand_data)
     /* insert the digest at the start of the entropy pool */
     memcpy(entropy_pool, digest, MD5_SIZE);
 #endif
-    return 0;
 #endif
+    return 0;
+
 
 }
 

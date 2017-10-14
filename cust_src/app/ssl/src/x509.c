@@ -270,8 +270,8 @@ static int x509_v3_basic_constraints(const uint8_t *cert, int offset,
         X509_CTX *x509_ctx)
 {
     int ret = X509_OK;
-    int lenSeq, l= 0;
-
+    //int lenSeq, l= 0;
+    int lenSeq;
     if ((offset = asn1_is_basic_constraints(cert, offset)) == 0)
         goto end_contraints;
 
