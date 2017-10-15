@@ -30,6 +30,7 @@ enum
 extern T_AMOPENAT_INTERFACE_VTBL* g_s_InterfaceVtbl;
 #define DBG_INFO(X, Y...)	iot_debug_print("%s %d:"X, __FUNCTION__, __LINE__, ##Y)
 #define DBG_ERROR(X, Y...)	iot_debug_print("%s %d:"X, __FUNCTION__, __LINE__, ##Y)
+
 #define SOCKET_CLOSE(A)         if (A >= 0) {close(A);A = -1;}
 #define TEST_IP						"36.7.87.100"
 //#define TEST_URL
@@ -42,30 +43,27 @@ static HANDLE hTimer;
 static HANDLE hSocketTask;
 static E_OPENAT_NETWORK_STATE NWState;				//网络状态
 static uint8_t ToFlag = 0;
-static SSL_CTX * gSSL_CTX;
-static SSL *gSSL;
-const char *DEMO_CERT = "-----BEGIN CERTIFICATE-----\r\n"
-		"MIIDnDCCAwWgAwIBAgIJAMHOdn3g57i0MA0GCSqGSIb3DQEBBQUAMIGRMQswCQYD\r\n"
-		"VQQGEwJDTjERMA8GA1UECBMIU2hhbmdIYWkxETAPBgNVBAcTCFNoYW5nSGFpMQ8w\r\n"
-		"DQYDVQQKEwZBSVJNMk0xDTALBgNVBAsTBFNPRlQxFjAUBgNVBAMTDXpodXRpYW5o\r\n"
-		"dWEtY2ExJDAiBgkqhkiG9w0BCQEWFXpodXRpYW5odWFAYWlybTJtLmNvbTAeFw0x\r\n"
-		"NzA3MjEwNDEwMzBaFw0xODA3MjEwNDEwMzBaMIGRMQswCQYDVQQGEwJDTjERMA8G\r\n"
-		"A1UECBMIU2hhbmdIYWkxETAPBgNVBAcTCFNoYW5nSGFpMQ8wDQYDVQQKEwZBSVJN\r\n"
-		"Mk0xDTALBgNVBAsTBFNPRlQxFjAUBgNVBAMTDXpodXRpYW5odWEtY2ExJDAiBgkq\r\n"
-		"hkiG9w0BCQEWFXpodXRpYW5odWFAYWlybTJtLmNvbTCBnzANBgkqhkiG9w0BAQEF\r\n"
-		"AAOBjQAwgYkCgYEAvRGzRy4RWO1XhFaB8uXd1F7cfTxW18coyY2aNnOrwrnQAU5F\r\n"
-		"mIXL7L076Rl7aOXi2oCiaYt1jKehXIuLJ9Mho9dW/Iid7dpA7n7guzvesEpuciy5\r\n"
-		"wc4zJOscU9V/M373FwVGBTbyoP4hgGu4LNBu2AyJ6EYgsqAsd/FGNArZTXsCAwEA\r\n"
-		"AaOB+TCB9jAdBgNVHQ4EFgQUHqGE6j7NmQ5blERny6vIRDDicRowgcYGA1UdIwSB\r\n"
-		"vjCBu4AUHqGE6j7NmQ5blERny6vIRDDicRqhgZekgZQwgZExCzAJBgNVBAYTAkNO\r\n"
-		"MREwDwYDVQQIEwhTaGFuZ0hhaTERMA8GA1UEBxMIU2hhbmdIYWkxDzANBgNVBAoT\r\n"
-		"BkFJUk0yTTENMAsGA1UECxMEU09GVDEWMBQGA1UEAxMNemh1dGlhbmh1YS1jYTEk\r\n"
-		"MCIGCSqGSIb3DQEJARYVemh1dGlhbmh1YUBhaXJtMm0uY29tggkAwc52feDnuLQw\r\n"
-		"DAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUFAAOBgQAvjFrd/VyydXeaBjuJbJHR\r\n"
-		"H2gLli0w5JQ3FbBpEZBlbpvVL4nmonkrCl9Y77lLSTpAN2E3IVJyE7aU2wbPTjJq\r\n"
-		"qnk0oLPEIkMh26JtnmSNZLmHlTsqpJvlDhH+Rg+vrrUSGZrZIWm+ObhUe0CRxRcH\r\n"
-		"qPAObM42B+GqVaIK3ZPB8w==\r\n"
-		"-----END CERTIFICATE-----\r\n";
+const char *DEMO_CA_CERT = "-----BEGIN CERTIFICATE-----\r\n"\
+		"MIIDnDCCAwWgAwIBAgIJAMHOdn3g57i0MA0GCSqGSIb3DQEBBQUAMIGRMQswCQYD\r\n"\
+		"VQQGEwJDTjERMA8GA1UECBMIU2hhbmdIYWkxETAPBgNVBAcTCFNoYW5nSGFpMQ8w\r\n"\
+		"DQYDVQQKEwZBSVJNMk0xDTALBgNVBAsTBFNPRlQxFjAUBgNVBAMTDXpodXRpYW5o\r\n"\
+		"dWEtY2ExJDAiBgkqhkiG9w0BCQEWFXpodXRpYW5odWFAYWlybTJtLmNvbTAeFw0x\r\n"\
+		"NzA3MjEwNDEwMzBaFw0xODA3MjEwNDEwMzBaMIGRMQswCQYDVQQGEwJDTjERMA8G\r\n"\
+		"A1UECBMIU2hhbmdIYWkxETAPBgNVBAcTCFNoYW5nSGFpMQ8wDQYDVQQKEwZBSVJN\r\n"\
+		"Mk0xDTALBgNVBAsTBFNPRlQxFjAUBgNVBAMTDXpodXRpYW5odWEtY2ExJDAiBgkq\r\n"\
+		"hkiG9w0BCQEWFXpodXRpYW5odWFAYWlybTJtLmNvbTCBnzANBgkqhkiG9w0BAQEF\r\n"\
+		"AAOBjQAwgYkCgYEAvRGzRy4RWO1XhFaB8uXd1F7cfTxW18coyY2aNnOrwrnQAU5F\r\n"\
+		"mIXL7L076Rl7aOXi2oCiaYt1jKehXIuLJ9Mho9dW/Iid7dpA7n7guzvesEpuciy5\r\n"\
+		"wc4zJOscU9V/M373FwVGBTbyoP4hgGu4LNBu2AyJ6EYgsqAsd/FGNArZTXsCAwEA\r\n"\
+		"AaOB+TCB9jAdBgNVHQ4EFgQUHqGE6j7NmQ5blERny6vIRDDicRowgcYGA1UdIwSB\r\n"\
+		"vjCBu4AUHqGE6j7NmQ5blERny6vIRDDicRqhgZekgZQwgZExCzAJBgNVBAYTAkNO\r\n"\
+		"MREwDwYDVQQIEwhTaGFuZ0hhaTERMA8GA1UEBxMIU2hhbmdIYWkxDzANBgNVBAoT\r\n"\
+		"BkFJUk0yTTENMAsGA1UECxMEU09GVDEWMBQGA1UEAxMNemh1dGlhbmh1YS1jYTEk\r\n"\
+		"MCIGCSqGSIb3DQEJARYVemh1dGlhbmh1YUBhaXJtMm0uY29tggkAwc52feDnuLQw\r\n"\
+		"DAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUFAAOBgQAvjFrd/VyydXeaBjuJbJHR\r\n"\
+		"H2gLli0w5JQ3FbBpEZBlbpvVL4nmonkrCl9Y77lLSTpAN2E3IVJyE7aU2wbPTjJq\r\n"\
+		"qnk0oLPEIkMh26JtnmSNZLmHlTsqpJvlDhH+Rg+vrrUSGZrZIWm+ObhUe0CRxRcH\r\n"\
+		"qPAObM42B+GqVaIK3ZPB8w==\r\n-----END CERTIFICATE-----\r\n";
 
 
 #ifdef TEST_URL
@@ -221,27 +219,42 @@ static int32_t SSL_SocketRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
 static void SSL_Task(PVOID pParameter)
 {
 	USER_MESSAGE*    msg;
-    INT32 fd;
-
+	uint8_t *RxData;
 	uint8_t ReConnCnt, Error, Quit;
-	int32_t RxLen = 0;
+	int32_t Ret,RxLen = 0;
 	int32_t Socketfd = -1;
 	int32_t TopicSN, Result;
+	SSL_CTX * SSLCtrl = SSL_CreateCtrl(0);
+	SSL * SSLLink = NULL;
+	T_AMOPENAT_SYSTEM_DATETIME Datetime;
 	ReConnCnt = 0;
-	Quit = 0;
-    fd = iot_fs_open_file(SSL_FILE_PATH, FS_O_RDONLY);
-    DBG_INFO("%d", fd);
-    if (fd >= 0)
-    {
-    	iot_fs_close_file(fd);
-    }
-    else
-    {
-
-    }
+	if (!SSLCtrl)
+	{
+		DBG_ERROR("!");
+		Quit = 1;
+	}
+	else
+	{
+		Quit = 0;
+	}
+	//需要对时间校准，DEMO中简化为直接设置时间了
+	Datetime.nYear = 2017;
+	Datetime.nMonth = 10;
+	Datetime.nDay = 15;
+	Datetime.nHour = 11;
+	Datetime.nMin = 14;
+	Datetime.nSec = 11;
+	iot_os_set_system_datetime(&Datetime);
+	//加载CA证书
+	SSL_LoadKey(SSLCtrl, SSL_OBJ_X509_CACERT, DEMO_CA_CERT, strlen(DEMO_CA_CERT), NULL);
 	while (!Quit)
 	{
 		SOCKET_CLOSE(Socketfd);
+		if (SSLLink)
+		{
+			SSL_FreeLink(SSLLink);
+			SSLLink = NULL;
+		}
 		iot_os_sleep(5000);	//这里最好使用timer来延迟，demo简化使用
 		iot_os_stop_timer(hTimer);
 		iot_os_start_timer(hTimer, 90*1000);//90秒内如果没有激活APN，重启模块
@@ -283,8 +296,23 @@ static void SSL_Task(PVOID pParameter)
 			continue;
 		}
 
-
-
+		DBG_INFO("start ssl handshake");
+		SSLLink = SSL_NewLink(SSLCtrl, Socketfd, NULL, 0, NULL, NULL);
+		if (!SSLLink)
+		{
+			DBG_ERROR("!");
+			Quit = 1;
+			continue;
+		}
+		Ret = SSL_HandshakeStatus(SSLLink);
+		if (Ret)
+		{
+			DBG_ERROR("ssl handshake fail %d", Ret);
+		}
+		else
+		{
+			DBG_INFO("ssl handshake ok");
+		}
 		iot_os_start_timer(hTimer, SSL_HEAT_TO*1000);//启动心跳计时
 		ToFlag = 0;
 		Error = 0;
@@ -316,6 +344,27 @@ static void SSL_Task(PVOID pParameter)
 						else
 						{
 							iot_os_start_timer(hTimer, SSL_HEAT_TO*1000);//启动心跳计时
+							//心跳时间到，发送一次请求，接收响应并打印
+							Ret = SSL_Write(SSLLink, TEST_DATA, strlen(TEST_DATA));
+							if (Ret < 0)
+							{
+								DBG_ERROR("ssl send error %d", Ret);
+								Error = 1;
+							}
+							else
+							{
+								Ret = SSL_Read(SSLLink, &RxData);
+								if (Ret <= 0)
+								{
+									DBG_ERROR("ssl receive error %d", Ret);
+									Error = 1;
+								}
+								else
+								{
+									RxData[Ret] = 0;
+									DBG_INFO("%s\r\n", RxData);
+								}
+							}
 						}
 						break;
 					default:
@@ -332,6 +381,12 @@ static void SSL_Task(PVOID pParameter)
 	}
 	iot_os_stop_timer(hTimer);
 	SOCKET_CLOSE(Socketfd);
+	if (SSLLink)
+	{
+		SSL_FreeLink(SSLLink);
+		SSLLink = NULL;
+	}
+	SSL_FreeCtrl(SSLCtrl);
 	while (1)
 	{
 		iot_os_sleep(43200 * 1000);
@@ -381,5 +436,5 @@ void app_main(void)
                         "demo_socket_SSL");
 	NWState = OPENAT_NETWORK_DISCONNECT;
 	hTimer = iot_os_create_timer(SSL_TimerHandle, NULL);
-	gSSL_CTX = ssl_ctx_new(0, 0);
+
 }

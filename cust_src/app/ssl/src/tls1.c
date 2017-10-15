@@ -1529,7 +1529,11 @@ static int do_handshake(SSL *ssl, uint8_t *buf, int read_len)
 
     if (handshake_type != HS_CERT_VERIFY && handshake_type != HS_HELLO_REQUEST)
         add_packet(ssl, buf, hs_len); 
-
+#ifdef __AIR202__
+    {
+    	do_clnt_handshake(ssl, handshake_type, buf, hs_len);
+    }
+#else
 #if defined(CONFIG_SSL_ENABLE_CLIENT)
     ret = is_client ? 
         do_clnt_handshake(ssl, handshake_type, buf, hs_len) :
@@ -1537,7 +1541,7 @@ static int do_handshake(SSL *ssl, uint8_t *buf, int read_len)
 #else
     ret = do_svr_handshake(ssl, handshake_type, buf, hs_len);
 #endif
-
+#endif
     /* just use recursion to get the rest */
     if (hs_len < read_len && ret == SSL_OK)
         ret = do_handshake(ssl, &buf[hs_len], read_len-hs_len);

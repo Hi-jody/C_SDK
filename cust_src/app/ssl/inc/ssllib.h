@@ -11,7 +11,10 @@
 #include "os_port.h"
 #include "ssl.h"
 typedef int(*SocketAPI)(int SocketFd, void *Buf, uint16_t Len);
-
+extern EXP_FUNC int STDCALL new_pem_obj(SSL_CTX *ssl_ctx, int is_cacert, char *where,
+        int remain, const char *password);
+extern EXP_FUNC int STDCALL do_obj(SSL_CTX *ssl_ctx, int obj_type,
+        SSLObjLoader *ssl_obj, const char *password);
 /**
  * @brief 注册SSL的数据收发函数，由于默认使用socket形式，为方便AT指令用户，提供此接口，将数据的收发交由AT指令完成
  * @param SendFun 发送函数
@@ -21,7 +24,7 @@ typedef int(*SocketAPI)(int SocketFd, void *Buf, uint16_t Len);
 void SSL_RegSocketCallback(SocketAPI SendFun, SocketAPI ReceiveFun);
 
 /**
- * @brief 创建一个SSL控制结构体
+ * @brief 创建一个SSL控制结构体，没有默认KEY，需要之后用SSL_LoadKey来加载证书内容
  * @param NumSessions 最多允许缓存的Session，可以为0
  * @return  一个SSL控制结构体的地址指针
  */
@@ -44,12 +47,12 @@ void SSL_FreeCtrl(SSL_CTX *SSLCtrl);
  * @param MaxFragmentSize [in] 最大片段长度，大部分情况下不需要，填NULL，可以填的值只有2^9, 2^10 .. 2^14
  * @return 返回一个SSL连接结构体的地址指针
  */
-SSL * SSL_NewHandshake(
+SSL * SSL_NewLink(
 		SSL_CTX *SSLCtrl,
 		int32_t ClientID,
 		const uint8_t *SessionID,
 		uint8_t SessionIDSize,
-		const char *Hostname,
+		const char **Hostname,
 		uint16_t *MaxFragmentSize);
 
 /**
@@ -92,31 +95,19 @@ int32_t SSL_Read(SSL *SSLLink, uint8_t **InData);
 int32_t SSL_Write(SSL *SSLLink, const uint8_t *OutData, uint16_t OutLen);
 
 /**
- * @brief Process binary data.
- * These are temporary objects that are used to load private keys,
- * certificates etc into memory.
- * @param ssl_ctx [in] The client/server context.
- * @param obj_type [in] The format of the memory data.
- * @param data [in] The binary data to be loaded.
- * @param len [in] The amount of data to be loaded.
- * @param password [in] The password used. Can be null if not required.
- * @return SSL_OK if all ok
- * @see ssl_obj_load for more details on obj_type.
+ * @brief 加载证书或者RSAkey，如果是文件形式，需要预先从文件里读取全部原始数据到内存
+ * @param SSLCtrl [in] SSLCtrl 控制结构体的地址指针
+ * @param Type [in] 加载的数据类型，只能是
+ * - SSL_OBJ_X509_CERT (no password required) 客户端的证书，用于服务器验证客户端，大部分情况不需要。目前涉及到银行金融时可能需要
+ * - SSL_OBJ_X509_CACERT (no password required) 验证服务器证书用的CA证书，基本上是必须的
+ * - SSL_OBJ_RSA_KEY (AES128/AES256 PEM encryption supported)
+ * - SSL_OBJ_PKCS8 (RC4-128 encrypted data supported)
+ * - SSL_OBJ_PKCS12 (RC4-128 encrypted data supported).
+ * @param Data [in] 加载的数据指针，可以是16进制数据，也可以是ASCII字符串.
+ * @param Len [in] 数据长度
+ * @param Password [in] 如果是加密的证书需要密码来解密，否则填NULL
+ * @return 0成功 其他失败
  */
-int32_t ssl_obj_memory_load(SSL_CTX *ssl_ctx, int obj_type, const uint8_t *data, int len, const char *password);
-
-/**
- * @brief Process binary data.
- * These are temporary objects that are used to load private keys,
- * certificates etc into memory.
- * @param ssl_ctx [in] The client/server context.
- * @param obj_type [in] The format of the memory data.
- * @param data [in] The binary data to be loaded.
- * @param len [in] The amount of data to be loaded.
- * @param password [in] The password used. Can be null if not required.
- * @return SSL_OK if all ok
- * @see ssl_obj_load for more details on obj_type.
- */
-int32_t ssl_obj_memory_load(SSL_CTX *ssl_ctx, int obj_type, const uint8_t *data, int len, const char *password);
+int32_t SSL_LoadKey(SSL_CTX *SSLCtrl, int32_t Type, const uint8_t *Data, int32_t Len, const int8_t *Password);
 
 #endif

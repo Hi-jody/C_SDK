@@ -123,7 +123,7 @@ EXP_FUNC int STDCALL ssl_obj_memory_load(SSL_CTX *ssl_ctx, int mem_type,
 /*
  * Actually work out what we are doing 
  */
-static int do_obj(SSL_CTX *ssl_ctx, int obj_type, 
+EXP_FUNC int STDCALL do_obj(SSL_CTX *ssl_ctx, int obj_type,
                     SSLObjLoader *ssl_obj, const char *password)
 {
     int ret = SSL_OK;
@@ -296,7 +296,7 @@ error:
 /**
  * Take a base64 blob of data and turn it into its proper ASN.1 form.
  */
-static int new_pem_obj(SSL_CTX *ssl_ctx, int is_cacert, char *where, 
+EXP_FUNC int STDCALL new_pem_obj(SSL_CTX *ssl_ctx, int is_cacert, char *where,
                     int remain, const char *password)
 {
     int ret = SSL_ERROR_BAD_CERTIFICATE;

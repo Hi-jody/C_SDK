@@ -45,6 +45,7 @@ extern "C" {
 #include "tls_config.h"
 #include "iot_os.h"
 #include "string.h"
+#include "stdarg.h"
 #include "iot_socket.h"
 #include "iot_debug.h"
 #define __AIR202__
