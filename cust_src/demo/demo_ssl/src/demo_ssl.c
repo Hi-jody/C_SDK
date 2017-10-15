@@ -436,5 +436,5 @@ void app_main(void)
                         "demo_socket_SSL");
 	NWState = OPENAT_NETWORK_DISCONNECT;
 	hTimer = iot_os_create_timer(SSL_TimerHandle, NULL);
-
+	SSL_RegSocketCallback(SSL_SocketTx, SSL_SocketRx);
 }

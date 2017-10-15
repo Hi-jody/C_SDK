@@ -44,8 +44,8 @@
 #include "os_port.h"
 #include "ssl.h"
 
-static int do_obj(SSL_CTX *ssl_ctx, int obj_type, 
-                    SSLObjLoader *ssl_obj, const char *password);
+//static int do_obj(SSL_CTX *ssl_ctx, int obj_type,
+//                    SSLObjLoader *ssl_obj, const char *password);
 #ifdef CONFIG_SSL_HAS_PEM
 static int ssl_obj_PEM_load(SSL_CTX *ssl_ctx, int obj_type, 
                         SSLObjLoader *ssl_obj, const char *password);

@@ -91,7 +91,7 @@ static const short lmos[] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 
 static const short mos[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
 #define MONTAB(year) ((year & 0x03) == 2 ? lmos : mos)
 
-time_t mktime(struct tm *_timeptr)
+time_t OS_TimeToUTCTamp(struct tm *_timeptr)
 {
 	int year, days, secs;
 

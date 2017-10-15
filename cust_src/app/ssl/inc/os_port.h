@@ -296,11 +296,12 @@ enum
 #define malloc		iot_os_malloc
 #define realloc		iot_os_realloc
 #define free		iot_os_free
+#define mktime		OS_TimeToUTCTamp
 #define printf(X, Y...)		iot_debug_print(X,##Y)
 extern int OS_SocketRead(int SocketFd, void *Buf, uint16_t Len);
 extern int OS_SocketWrite(int SocketFd, void *Buf, uint16_t Len);
 #define abort()
-extern time_t mktime(struct tm *_timeptr);
+time_t OS_TimeToUTCTamp(struct tm *_timeptr);
 extern time_t time(time_t *_timer);
 extern int gettimeofday(struct timeval *__p, void *__tz);
 void* calloc(size_t __nmemb, size_t __size);
