@@ -1067,7 +1067,7 @@ static int send_raw_packet(SSL *ssl, uint8_t protocol)
     DISPLAY_BYTES(ssl, "sending %d bytes", ssl->bm_all_data, 
                              pkt_size, pkt_size);
 #ifdef __AIR202__
-    ret = OS_SocketRead(ssl->client_fd, ssl->bm_all_data, pkt_size);
+    ret = OS_SocketWrite(ssl->client_fd, ssl->bm_all_data, pkt_size);
     if (ret < 0)
     {
     	return SSL_ERROR_CONN_LOST;

@@ -206,6 +206,7 @@ SP4
 cpkey
 deskey
 __udivdi3
+__umoddi3
 vsscanf
 sscanf
 isHostName

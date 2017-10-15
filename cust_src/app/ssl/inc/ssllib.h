@@ -81,7 +81,7 @@ void SSL_FreeLink(SSL *SSLLink);
  * @param SSLLink [in] SSL连接结构体的地址指针.
  * @param InData [out] 解密后的数据指针地址，注意，该参数不需要malloc空间，也不要free空间，
  * 非NULL表示有数据，NULL表示没有数据。
- * @return  >0 解密后数据长度, =0 没有数据 <0 有错误
+ * @return  >0 解密后数据长度, =0 数据还没有接收完，需要再次读取， <0 有错误
  */
 int32_t SSL_Read(SSL *SSLLink, uint8_t **InData);
 

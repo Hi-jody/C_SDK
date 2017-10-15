@@ -32,10 +32,10 @@ extern T_AMOPENAT_INTERFACE_VTBL* g_s_InterfaceVtbl;
 #define DBG_ERROR(X, Y...)	iot_debug_print("%s %d:"X, __FUNCTION__, __LINE__, ##Y)
 
 #define SOCKET_CLOSE(A)         if (A >= 0) {close(A);A = -1;}
-#define TEST_IP						"36.7.87.100"
-//#define TEST_URL
-#define TEST_PORT					(4433)
-#define TEST_DATA					"GET / HTTP/1.1\r\nHost: 36.7.87.100\r\nConnection: keep-alive\r\n\r\n"
+//#define TEST_IP						"36.7.87.100"
+#define TEST_URL					"www.baidu.com"
+#define TEST_PORT					(443)
+#define TEST_DATA					"GET / HTTP/1.1\r\nHost: www.baidu.coms\r\nConnection: keep-alive\r\n\r\n"
 #define SSL_RECONNECT_MAX			(8)
 #define SSL_HEAT_TO					20
 #define SSL_FILE_PATH 				L"/ldata/ca_crt.mp3"
@@ -154,6 +154,7 @@ static int32_t SSL_SocketTx(int32_t Socketfd, void *Buf, uint16_t TxLen)
     struct timeval tm;
     fd_set WriteSet;
 	int32_t Result;
+	DBG_INFO("%d", TxLen);
 	Result = send(Socketfd, (uint8_t *)Buf, TxLen, 0);
 
 	if (Result < 0)
@@ -192,7 +193,7 @@ static int32_t SSL_SocketRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
 	int32_t Result;
     FD_ZERO(&ReadSet);
     FD_SET(Socketfd, &ReadSet);
-    tm.tv_sec = 75;
+    tm.tv_sec = 30;
     tm.tv_usec = 0;
     Result = select(Socketfd + 1, &ReadSet, NULL, NULL, &tm);
     if(Result > 0)
@@ -208,6 +209,7 @@ static int32_t SSL_SocketRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
         	DBG_ERROR("recv error %d", socket_errno(Socketfd));
             return -1;
         }
+        DBG_INFO("get %dbyte", Result);
 		return Result;
     }
     else
@@ -223,7 +225,6 @@ static void SSL_Task(PVOID pParameter)
 	uint8_t ReConnCnt, Error, Quit;
 	int32_t Ret,RxLen = 0;
 	int32_t Socketfd = -1;
-	int32_t TopicSN, Result;
 	SSL_CTX * SSLCtrl = SSL_CreateCtrl(0);
 	SSL * SSLLink = NULL;
 	T_AMOPENAT_SYSTEM_DATETIME Datetime;
@@ -313,69 +314,57 @@ static void SSL_Task(PVOID pParameter)
 		{
 			DBG_INFO("ssl handshake ok");
 		}
-		iot_os_start_timer(hTimer, SSL_HEAT_TO*1000);//启动心跳计时
+
+		iot_os_start_timer(hTimer, 1*1000);//1秒后发送一次HTTP请求
 		ToFlag = 0;
 		Error = 0;
 		while(!Error && !Quit)
 		{
-			RxLen = 0;
-			if (RxLen > 0)
+
+			while (ToFlag)
 			{
-				continue;
-			}
-			else if (RxLen < 0)
-			{
-				Error = 1;
-				continue;
-			}
-			else
-			{
-				while (ToFlag)
+				iot_os_wait_message(hSocketTask, (PVOID)&msg);
+				switch(msg->Type)
 				{
-					iot_os_wait_message(hSocketTask, (PVOID)&msg);
-					switch(msg->Type)
+				case USER_MSG_TIMER:
+					ToFlag = 0;
+					iot_os_start_timer(hTimer, SSL_HEAT_TO*1000);//启动心跳计时
+					//心跳时间到，发送一次请求，接收响应并打印
+					Ret = SSL_Write(SSLLink, TEST_DATA, strlen(TEST_DATA));
+					if (Ret < 0)
 					{
-					case USER_MSG_TIMER:
-						ToFlag = 0;
-						if (Result < 0)
+						DBG_ERROR("ssl send error %d", Ret);
+						Error = 1;
+					}
+					else
+					{
+						Ret = 0;
+						while (!Ret)
 						{
+							Ret = SSL_Read(SSLLink, &RxData);
+						}
+
+						if (Ret < 0)
+						{
+							DBG_ERROR("ssl receive error %d", Ret);
 							Error = 1;
 						}
 						else
 						{
-							iot_os_start_timer(hTimer, SSL_HEAT_TO*1000);//启动心跳计时
-							//心跳时间到，发送一次请求，接收响应并打印
-							Ret = SSL_Write(SSLLink, TEST_DATA, strlen(TEST_DATA));
-							if (Ret < 0)
-							{
-								DBG_ERROR("ssl send error %d", Ret);
-								Error = 1;
-							}
-							else
-							{
-								Ret = SSL_Read(SSLLink, &RxData);
-								if (Ret <= 0)
-								{
-									DBG_ERROR("ssl receive error %d", Ret);
-									Error = 1;
-								}
-								else
-								{
-									RxData[Ret] = 0;
-									DBG_INFO("%s\r\n", RxData);
-								}
-							}
+							RxData[Ret] = 0;
+							DBG_INFO("%s\r\n", RxData);
 						}
-						break;
-					default:
-						if (NWState != OPENAT_NETWORK_LINKED)
-						{
-							Error = 1;
-						}
-						break;
 					}
-					iot_os_free(msg);
+
+					break;
+				default:
+					if (NWState != OPENAT_NETWORK_LINKED)
+					{
+						Error = 1;
+					}
+					break;
 				}
+				iot_os_free(msg);
 			}
 		}
 	}
