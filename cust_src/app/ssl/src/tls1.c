@@ -1734,7 +1734,7 @@ int send_certificate(SSL *ssl)
     buf[0] = HS_CERTIFICATE;
     buf[1] = 0;
     buf[4] = 0;
-
+    iot_debug_print("send sert start\r\n");
     /* spec says we must check if the hash/sig algorithm is OK */
     if (ssl->version >= SSL_PROTOCOL_VERSION_TLS1_2 &&
              ((ret = check_certificate_chain(ssl)) != SSL_OK))
@@ -1745,7 +1745,9 @@ int send_certificate(SSL *ssl)
 
     while (i < ssl->ssl_ctx->chain_length)
     {
+
         SSL_CERT *cert = &ssl->ssl_ctx->certs[i];
+        iot_debug_print("send cert %d all %d %dbyte\r\n", i, ssl->ssl_ctx->chain_length, cert->size);
         buf[offset++] = 0;        
         buf[offset++] = cert->size >> 8;        /* cert 1 length */
         buf[offset++] = cert->size & 0xff;
@@ -1762,7 +1764,7 @@ int send_certificate(SSL *ssl)
     buf[3] = chain_length & 0xff;
     ssl->bm_index = offset;
     ret = send_packet(ssl, PT_HANDSHAKE_PROTOCOL, NULL, offset);
-
+    iot_debug_print("send sert done\r\n");
 error:
     return ret;
 }

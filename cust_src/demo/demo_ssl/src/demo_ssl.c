@@ -1,11 +1,8 @@
 /*
- *功能需求：
- *1、数据网络准备就绪后，连接https后台
- *2、连接成功后，每隔20秒钟发送一次GET命令到后台
- *3、与后台保持长连接，断开后主动再去重连，连接成功仍然按照第2条发送数据
- *4、收到后台的数据时，在rcv函数中打印出来
- *测试时请搭建自己的服务器
- *此例子为长连接，只要是软件上能够检测到的网络异常，可以自动去重新连接
+ * 通过连接https://www.baidu.com 演示单向认证的SSL握手过程，及数据加密收发
+ * 通过连接https://iot-auth.cn-shanghai.aliyuncs.com 演示单向认证的SSL握手过程，
+ * ！！！不做进一步数据收发过程，直接关闭
+ * 双向认证打开宏TEST_ALIYUN，否则关闭
  */
 #include "string.h"
 #include "iot_os.h"
@@ -32,17 +29,22 @@ extern T_AMOPENAT_INTERFACE_VTBL* g_s_InterfaceVtbl;
 #define DBG_ERROR(X, Y...)	iot_debug_print("%s %d:"X, __FUNCTION__, __LINE__, ##Y)
 
 #define SOCKET_CLOSE(A)         if (A >= 0) {close(A);A = -1;}
-//#define TEST_IP						"36.7.87.100"
+#define TEST_ALIYUN
+#ifdef TEST_ALIYUN
+#define TEST_URL					"iot-auth.cn-shanghai.aliyuncs.com"
+#else
 #define TEST_URL					"www.baidu.com"
+#endif
 #define TEST_PORT					(443)
 #define TEST_DATA					"GET / HTTP/1.1\r\nHost: www.baidu.coms\r\nConnection: keep-alive\r\n\r\n"
 #define SSL_RECONNECT_MAX			(8)
 #define SSL_HEAT_TO					20
-#define SSL_FILE_PATH 				L"/ldata/ca_crt.mp3"
 static HANDLE hTimer;
 static HANDLE hSocketTask;
 static E_OPENAT_NETWORK_STATE NWState;				//网络状态
 static uint8_t ToFlag = 0;
+
+//其它的CA证书
 const char *DEMO_CA_CERT = "-----BEGIN CERTIFICATE-----\r\n"\
 		"MIIDnDCCAwWgAwIBAgIJAMHOdn3g57i0MA0GCSqGSIb3DQEBBQUAMIGRMQswCQYD\r\n"\
 		"VQQGEwJDTjERMA8GA1UECBMIU2hhbmdIYWkxETAPBgNVBAcTCFNoYW5nSGFpMQ8w\r\n"\
@@ -65,6 +67,28 @@ const char *DEMO_CA_CERT = "-----BEGIN CERTIFICATE-----\r\n"\
 		"qnk0oLPEIkMh26JtnmSNZLmHlTsqpJvlDhH+Rg+vrrUSGZrZIWm+ObhUe0CRxRcH\r\n"\
 		"qPAObM42B+GqVaIK3ZPB8w==\r\n-----END CERTIFICATE-----\r\n";
 
+//阿里云的CA根证书
+const char *ALIYUN_CA_CERT = "-----BEGIN CERTIFICATE-----\r\n"
+		"MIIDdTCCAl2gAwIBAgILBAAAAAABFUtaw5QwDQYJKoZIhvcNAQEFBQAwVzELMAkG\r\n"
+		"A1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExEDAOBgNVBAsTB1Jv\r\n"
+		"b3QgQ0ExGzAZBgNVBAMTEkdsb2JhbFNpZ24gUm9vdCBDQTAeFw05ODA5MDExMjAw\r\n"
+		"MDBaFw0yODAxMjgxMjAwMDBaMFcxCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBHbG9i\r\n"
+		"YWxTaWduIG52LXNhMRAwDgYDVQQLEwdSb290IENBMRswGQYDVQQDExJHbG9iYWxT\r\n"
+		"aWduIFJvb3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDaDuaZ\r\n"
+		"jc6j40+Kfvvxi4Mla+pIH/EqsLmVEQS98GPR4mdmzxzdzxtIK+6NiY6arymAZavp\r\n"
+		"xy0Sy6scTHAHoT0KMM0VjU/43dSMUBUc71DuxC73/OlS8pF94G3VNTCOXkNz8kHp\r\n"
+		"1Wrjsok6Vjk4bwY8iGlbKk3Fp1S4bInMm/k8yuX9ifUSPJJ4ltbcdG6TRGHRjcdG\r\n"
+		"snUOhugZitVtbNV4FpWi6cgKOOvyJBNPc1STE4U6G7weNLWLBYy5d4ux2x8gkasJ\r\n"
+		"U26Qzns3dLlwR5EiUWMWea6xrkEmCMgZK9FGqkjWZCrXgzT/LCrBbBlDSgeF59N8\r\n"
+		"9iFo7+ryUp9/k5DPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8E\r\n"
+		"BTADAQH/MB0GA1UdDgQWBBRge2YaRQ2XyolQL30EzTSo//z9SzANBgkqhkiG9w0B\r\n"
+		"AQUFAAOCAQEA1nPnfE920I2/7LqivjTFKDK1fPxsnCwrvQmeU79rXqoRSLblCKOz\r\n"
+		"yj1hTdNGCbM+w6DjY1Ub8rrvrTnhQ7k4o+YviiY776BQVvnGCv04zcQLcFGUl5gE\r\n"
+		"38NflNUVyRRBnMRddWQVDf9VMOyGj/8N7yy5Y0b2qvzfvGn9LhJIZJrglfCm7ymP\r\n"
+		"AbEVtQwdpf5pLGkkeB6zpxxxYu7KyJesF12KwvhHhm4qxFYxldBniYUr+WymXUad\r\n"
+		"DKqC5JlR3XC321Y9YeRq4VzW9v493kHMB65jUr9TU/Qr6cf9tveCX4XSQRjbgbME\r\n"
+		"HMUfpIBvFSDJ3gyICh3WZlXi/EjJKSZp4A==\r\n"
+		"-----END CERTIFICATE-----";
 
 #ifdef TEST_URL
 static uint32_t SSL_Gethostbyname(void)
@@ -154,7 +178,6 @@ static int32_t SSL_SocketTx(int32_t Socketfd, void *Buf, uint16_t TxLen)
     struct timeval tm;
     fd_set WriteSet;
 	int32_t Result;
-	DBG_INFO("%d", TxLen);
 	Result = send(Socketfd, (uint8_t *)Buf, TxLen, 0);
 
 	if (Result < 0)
@@ -209,13 +232,44 @@ static int32_t SSL_SocketRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
         	DBG_ERROR("recv error %d", socket_errno(Socketfd));
             return -1;
         }
-        DBG_INFO("get %dbyte", Result);
 		return Result;
     }
     else
     {
     	return -1;
     }
+}
+
+static void SSL_HexPrint(uint8_t *Data, uint8_t Len)
+{
+	uint8_t uart_buf[128];
+    uint32_t i,j, Temp;
+    j = 0;
+
+    for (i = 0; i < Len; i++)
+    {
+    	Temp = Data[i] >> 4;
+    	if (Temp < 10 )
+    	{
+    		uart_buf[j++] = Temp + '0';
+    	}
+    	else
+    	{
+    		uart_buf[j++] = Temp + 'A' - 10;
+    	}
+    	Temp = Data[i] & 0x0f;
+    	if (Temp < 10 )
+    	{
+    		uart_buf[j++] = Temp + '0';
+    	}
+    	else
+    	{
+    		uart_buf[j++] = Temp + 'A' - 10;
+    	}
+    	uart_buf[j++] = ' ';
+    }
+    uart_buf[j++] = 0;
+    DBG_INFO("%s", uart_buf);
 }
 
 static void SSL_Task(PVOID pParameter)
@@ -225,9 +279,10 @@ static void SSL_Task(PVOID pParameter)
 	uint8_t ReConnCnt, Error, Quit;
 	int32_t Ret,RxLen = 0;
 	int32_t Socketfd = -1;
-	SSL_CTX * SSLCtrl = SSL_CreateCtrl(0);
+	SSL_CTX * SSLCtrl = SSL_CreateCtrl(1);
 	SSL * SSLLink = NULL;
 	T_AMOPENAT_SYSTEM_DATETIME Datetime;
+
 	ReConnCnt = 0;
 	if (!SSLCtrl)
 	{
@@ -246,8 +301,11 @@ static void SSL_Task(PVOID pParameter)
 	Datetime.nMin = 14;
 	Datetime.nSec = 11;
 	iot_os_set_system_datetime(&Datetime);
+#ifdef TEST_ALIYUN
 	//加载CA证书
-	SSL_LoadKey(SSLCtrl, SSL_OBJ_X509_CACERT, DEMO_CA_CERT, strlen(DEMO_CA_CERT), NULL);
+	Ret = SSL_LoadKey(SSLCtrl, SSL_OBJ_X509_CACERT, ALIYUN_CA_CERT, strlen(ALIYUN_CA_CERT), NULL);
+	DBG_INFO("add cert ret = %d", Ret);
+#endif
 	while (!Quit)
 	{
 		SOCKET_CLOSE(Socketfd);
@@ -312,8 +370,13 @@ static void SSL_Task(PVOID pParameter)
 		}
 		else
 		{
-			DBG_INFO("ssl handshake ok");
+			DBG_INFO("ssl handshake ok %x",SSLLink->session->master_secret);
+			SSL_HexPrint(SSLLink->session->master_secret, 8);
 		}
+#ifdef TEST_ALIYUN
+		DBG_INFO("aliyun ssl handshake done, now quit!");
+		Quit = 1;
+#else
 
 		iot_os_start_timer(hTimer, 1*1000);//1秒后发送一次HTTP请求
 		ToFlag = 0;
@@ -367,6 +430,7 @@ static void SSL_Task(PVOID pParameter)
 				iot_os_free(msg);
 			}
 		}
+#endif
 	}
 	iot_os_stop_timer(hTimer);
 	SOCKET_CLOSE(Socketfd);

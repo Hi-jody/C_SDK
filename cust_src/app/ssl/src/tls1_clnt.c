@@ -428,6 +428,7 @@ static int process_cert_req(SSL *ssl)
     ssl->dc->bm_proc_index = cert_req_size;
 
     /* don't do any processing - we will send back an RSA certificate anyway */
+    iot_debug_print("req client cert!\r\n");
     ssl->next_state = HS_SERVER_HELLO_DONE;
     SET_SSL_FLAG(SSL_HAS_CERT_REQ);
 
