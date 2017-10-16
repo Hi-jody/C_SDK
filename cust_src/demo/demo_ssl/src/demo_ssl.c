@@ -359,7 +359,9 @@ static void SSL_Task(PVOID pParameter)
 				DBG_INFO("%s", SSLLink->x509_ctx->ca_cert_dn[i]);
 			}
 		}
-
+		SSL_HexPrint(SSLLink->session->master_secret, 16);
+		SSL_HexPrint(SSLLink->session->master_secret + 16, 16);
+		SSL_HexPrint(SSLLink->session->master_secret + 32, 16);
 		iot_os_start_timer(hTimer, 1*1000);//1秒后发送一次HTTP请求
 		ToFlag = 0;
 		Error = 0;
