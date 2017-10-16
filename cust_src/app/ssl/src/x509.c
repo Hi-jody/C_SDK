@@ -517,6 +517,7 @@ int x509_verify(const CA_CERT_CTX *ca_cert_ctx, const X509_CTX *cert,
     /* last cert in the chain - look for a trusted cert */
     if (next_cert == NULL)
     {
+
        if (ca_cert_ctx != NULL) 
        {
             /* go thru the CA store */

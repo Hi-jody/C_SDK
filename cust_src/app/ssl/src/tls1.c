@@ -1734,7 +1734,7 @@ int send_certificate(SSL *ssl)
     buf[0] = HS_CERTIFICATE;
     buf[1] = 0;
     buf[4] = 0;
-    iot_debug_print("send sert start\r\n");
+
     /* spec says we must check if the hash/sig algorithm is OK */
     if (ssl->version >= SSL_PROTOCOL_VERSION_TLS1_2 &&
              ((ret = check_certificate_chain(ssl)) != SSL_OK))
@@ -1747,7 +1747,7 @@ int send_certificate(SSL *ssl)
     {
 
         SSL_CERT *cert = &ssl->ssl_ctx->certs[i];
-        iot_debug_print("send cert %d all %d %dbyte\r\n", i, ssl->ssl_ctx->chain_length, cert->size);
+        DBG("send cert %d all %d %dbyte\r\n", i, ssl->ssl_ctx->chain_length, cert->size);
         buf[offset++] = 0;        
         buf[offset++] = cert->size >> 8;        /* cert 1 length */
         buf[offset++] = cert->size & 0xff;
@@ -1764,7 +1764,7 @@ int send_certificate(SSL *ssl)
     buf[3] = chain_length & 0xff;
     ssl->bm_index = offset;
     ret = send_packet(ssl, PT_HANDSHAKE_PROTOCOL, NULL, offset);
-    iot_debug_print("send sert done\r\n");
+
 error:
     return ret;
 }
@@ -2019,7 +2019,6 @@ EXP_FUNC int STDCALL ssl_verify_cert(const SSL *ssl)
 {
     int ret;
     int pathLenConstraint = 0;
-
     SSL_CTX_LOCK(ssl->ssl_ctx->mutex);
     ret = x509_verify(ssl->ssl_ctx->ca_cert_ctx, ssl->x509_ctx,
             &pathLenConstraint);
@@ -2118,6 +2117,7 @@ int process_certificate(SSL *ssl, X509_CTX **x509_ctx)
             if (asn1_compare_dn(chain->ca_cert_dn, certs[i]->cert_dn) == 0)
             {
                 // CA cert found, add it to the chain
+
                 cert_used[i] = 1;
                 chain->next = certs[i];
                 chain = certs[i];

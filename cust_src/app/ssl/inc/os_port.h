@@ -292,7 +292,7 @@ enum
 	false = 0,
 	true,
 };
-
+#define DBG			iot_debug_print
 #define malloc		iot_os_malloc
 #define realloc		iot_os_realloc
 #define free		iot_os_free

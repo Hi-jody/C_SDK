@@ -16,7 +16,6 @@
  * ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
  * 10、MQTT协议由于经过中转，所以客户端收到模块的返回信息，大概在1~3秒左右都是正常
  * 11、宏定义和全局变量可根据实际情况修改
- * 12、如果需要SSL，打开__SSL_ENABLE__即可，暂时不支持
  */
 #include "string.h"
 #include "iot_os.h"
@@ -41,7 +40,7 @@ extern T_AMOPENAT_INTERFACE_VTBL* g_s_InterfaceVtbl;
 #define DBG_ERROR(X, Y...)	iot_debug_print("%s %d:"X, __FUNCTION__, __LINE__, ##Y)
 #define SOCKET_CLOSE(A)         if (A >= 0) {close(A);A = -1;}
 
-//#define __SSL_ENABLE__
+
 #define MQTT_RECONNECT_MAX			(8)				//最大重连次数
 #define MQTT_PUBLISH_DEFAULT_QOS	MQTT_MSG_QOS1	//模块PUBLISH的默认QOS,QOS1
 #define MQTT_PAYLOAD_MAX			(1400)			//有效载荷最大长度1400
