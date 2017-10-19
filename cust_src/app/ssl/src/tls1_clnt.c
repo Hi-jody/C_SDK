@@ -93,6 +93,7 @@ int do_clnt_handshake(SSL *ssl, int handshake_type, uint8_t *buf, int hs_len)
     int ret;
 
     /* To get here the state must be valid */
+
     switch (handshake_type)
     {
         case HS_SERVER_HELLO:
@@ -108,11 +109,15 @@ int do_clnt_handshake(SSL *ssl, int handshake_type, uint8_t *buf, int hs_len)
             {
                 if (IS_SET_SSL_FLAG(SSL_HAS_CERT_REQ))
                 {
-                    if ((ret = send_certificate(ssl)) == SSL_OK &&
-                        (ret = send_client_key_xchg(ssl)) == SSL_OK)
-                    {
-                        send_cert_verify(ssl);
-                    }
+                	ret = send_certificate(ssl);
+                	if (ret == SSL_OK)
+                	{
+                		ret = send_client_key_xchg(ssl);
+                		if (ret == SSL_OK)
+                		{
+                			send_cert_verify(ssl);
+                		}
+                	}
                 }
                 else
                 {
@@ -143,6 +148,7 @@ int do_clnt_handshake(SSL *ssl, int handshake_type, uint8_t *buf, int hs_len)
             break;
 
         default:
+        	TLS_DBG("!");
             ret = SSL_ERROR_INVALID_HANDSHAKE;
             break;
     }
@@ -407,7 +413,6 @@ static int send_client_key_xchg(SSL *ssl)
     buf[3] = (enc_secret_size + 2) & 0xff;
     buf[4] = enc_secret_size >> 8;
     buf[5] = enc_secret_size & 0xff;
-
     generate_master_secret(ssl, premaster_secret);
     return send_packet(ssl, PT_HANDSHAKE_PROTOCOL, NULL, enc_secret_size+6);
 }
@@ -428,7 +433,6 @@ static int process_cert_req(SSL *ssl)
     ssl->dc->bm_proc_index = cert_req_size;
 
     /* don't do any processing - we will send back an RSA certificate anyway */
-    iot_debug_print("req client cert!\r\n");
     ssl->next_state = HS_SERVER_HELLO_DONE;
     SET_SSL_FLAG(SSL_HAS_CERT_REQ);
 
@@ -504,7 +508,9 @@ static int send_cert_verify(SSL *ssl)
     if (rsa_ctx)
     {
         SSL_CTX_LOCK(ssl->ssl_ctx->mutex);
+        TLS_DBG("start rsa encrypt");
         n = RSA_encrypt(rsa_ctx, dgst, dgst_len, &buf[offset + 2], 1);
+        TLS_DBG("end rsa encrypt");
         SSL_CTX_UNLOCK(ssl->ssl_ctx->mutex);
 
         if (n == 0)

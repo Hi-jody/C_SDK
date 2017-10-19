@@ -90,7 +90,7 @@ extern "C" {
 #define SIG_ALG_RSA                 1
 
 #define PARANOIA_CHECK(A, B)        if (A < B) { \
-    ret = SSL_ERROR_INVALID_HANDSHAKE; goto error; }
+		ret = SSL_ERROR_INVALID_HANDSHAKE; goto error; }
 
 /* protocol types */
 enum

@@ -1434,8 +1434,17 @@ int basic_read(SSL *ssl, uint8_t **in_data)
             }
             else /* no client renegotiation allowed */
             {
-                ret = SSL_ERROR_NO_CLIENT_RENOG;              
-                goto error;
+            	//注意，启动双向认证时，有些服务器会在握手完成后，重新协商握手，并在此过程中要求发送客户端证书
+            	if (buf[0] == HS_HELLO_REQUEST)
+            	{
+            		ret = do_handshake(ssl, buf, read_len);
+            	}
+            	else
+            	{
+					ret = SSL_ERROR_NO_CLIENT_RENOG;
+					goto error;
+            	}
+
             }
             break;
 
@@ -1508,16 +1517,15 @@ static int do_handshake(SSL *ssl, uint8_t *buf, int read_len)
     uint8_t handshake_type = buf[0];
     int ret = SSL_OK;
     int is_client = IS_SET_SSL_FLAG(SSL_IS_CLIENT);
-
     /* some integrity checking on the handshake */
     PARANOIA_CHECK(read_len-SSL_HS_HDR_SIZE, hs_len);
-
     if (handshake_type != ssl->next_state)
     {
         /* handle a special case on the client */
         if (!is_client || handshake_type != HS_CERT_REQ ||
                         ssl->next_state != HS_SERVER_HELLO_DONE)
         {
+        	TLS_DBG("%d %d",handshake_type, ssl->next_state);
             ret = SSL_ERROR_INVALID_HANDSHAKE;
             goto error;
         }
@@ -1531,7 +1539,7 @@ static int do_handshake(SSL *ssl, uint8_t *buf, int read_len)
         add_packet(ssl, buf, hs_len); 
 #ifdef __AIR202__
     {
-    	do_clnt_handshake(ssl, handshake_type, buf, hs_len);
+    	ret = do_clnt_handshake(ssl, handshake_type, buf, hs_len);
     }
 #else
 #if defined(CONFIG_SSL_ENABLE_CLIENT)
@@ -1560,7 +1568,10 @@ int send_change_cipher_spec(SSL *ssl)
             g_chg_cipher_spec_pkt, sizeof(g_chg_cipher_spec_pkt));
 
     if (ret >= 0 && set_key_block(ssl, 1) < 0)
-        ret = SSL_ERROR_INVALID_HANDSHAKE;
+    {
+    	ret = SSL_ERROR_INVALID_HANDSHAKE;
+    }
+
     
     if (ssl->cipher_info)
         SET_SSL_FLAG(SSL_TX_ENCRYPTED);
@@ -1742,12 +1753,10 @@ int send_certificate(SSL *ssl)
         ret = SSL_ERROR_INVALID_CERT_HASH_ALG;
         goto error;
     }
-
     while (i < ssl->ssl_ctx->chain_length)
     {
 
         SSL_CERT *cert = &ssl->ssl_ctx->certs[i];
-        DBG("send cert %d all %d %dbyte\r\n", i, ssl->ssl_ctx->chain_length, cert->size);
         buf[offset++] = 0;        
         buf[offset++] = cert->size >> 8;        /* cert 1 length */
         buf[offset++] = cert->size & 0xff;

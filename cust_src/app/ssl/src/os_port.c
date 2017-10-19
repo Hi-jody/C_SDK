@@ -113,7 +113,7 @@ time_t time(time_t *_timer)
 	{
 		DT.nYear += 2000;
 	}
-	year = DT.nYear - 70;
+	year = DT.nYear - 1970;
 	days = (year + 1) / 4 + 365 * year;
 	days += MONTAB(year)[DT.nMonth] + DT.nDay - 1;
 

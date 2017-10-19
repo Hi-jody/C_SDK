@@ -452,7 +452,6 @@ int x509_verify(const CA_CERT_CTX *ca_cert_ctx, const X509_CTX *cert,
     int match_ca_cert = 0;
     struct timeval tv;
     uint8_t is_self_signed = 0;
-
     if (cert == NULL)
     {
         ret = X509_VFY_ERROR_NO_TRUSTED_CERT;       
@@ -468,9 +467,7 @@ int x509_verify(const CA_CERT_CTX *ca_cert_ctx, const X509_CTX *cert,
         mod = cert->rsa_ctx->m;
         expn = cert->rsa_ctx->e;
     }
-
     gettimeofday(&tv, NULL);
-
     /* check the not before date */
     if (tv.tv_sec < cert->not_before)
     {
@@ -517,7 +514,6 @@ int x509_verify(const CA_CERT_CTX *ca_cert_ctx, const X509_CTX *cert,
     /* last cert in the chain - look for a trusted cert */
     if (next_cert == NULL)
     {
-
        if (ca_cert_ctx != NULL) 
        {
             /* go thru the CA store */
@@ -529,7 +525,6 @@ int x509_verify(const CA_CERT_CTX *ca_cert_ctx, const X509_CTX *cert,
                 if (cert->basic_constraint_present && 
                         !ca_cert_ctx->cert[i]->basic_constraint_cA)
                     continue;
-                        
                 if (asn1_compare_dn(cert->ca_cert_dn,
                                             ca_cert_ctx->cert[i]->cert_dn) == 0)
                 {
@@ -546,7 +541,6 @@ int x509_verify(const CA_CERT_CTX *ca_cert_ctx, const X509_CTX *cert,
                 i++;
             }
         }
-
         /* couldn't find a trusted cert (& let self-signed errors 
            be returned) */
         if (!match_ca_cert && !is_self_signed)
@@ -567,10 +561,10 @@ int x509_verify(const CA_CERT_CTX *ca_cert_ctx, const X509_CTX *cert,
         mod = next_cert->rsa_ctx->m;
         expn = next_cert->rsa_ctx->e;
     }
-
     /* cert is self signed */
     if (!match_ca_cert && is_self_signed)
     {
+
         ret = X509_VFY_ERROR_SELF_SIGNED;
         goto end_verify;
     }
@@ -591,7 +585,6 @@ int x509_verify(const CA_CERT_CTX *ca_cert_ctx, const X509_CTX *cert,
     {
         ret = X509_VFY_ERROR_BAD_SIGNATURE;
     }
-
     if (ret)
         goto end_verify;
 

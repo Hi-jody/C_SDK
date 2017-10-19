@@ -1,6 +1,5 @@
 /*
- * 通过连接https://www.icbc.com.cn 演示单向认证的SSL握手过程，及数据加密收发
- * 通过连接36.7.87.100 测试双向认证的SSL握手过程，及数据加密收发，该服务器随时会关闭，自己测试时必须是使用自己的服务器
+ * 通过连接101.132.154.251 测试双向认证的SSL握手过程，及数据加密收发，该服务器随时会关闭，自己测试时必须是使用自己的服务器
  */
 #include "string.h"
 #include "iot_os.h"
@@ -10,6 +9,7 @@
 #include "iot_fs.h"
 #include "iot_flash.h"
 #include "iot_types.h"
+#include "iot_pmd.h"
 #include "ssllib.h"
 typedef struct {
     UINT8 Type;
@@ -27,14 +27,14 @@ extern T_AMOPENAT_INTERFACE_VTBL* g_s_InterfaceVtbl;
 #define DBG_ERROR(X, Y...)	iot_debug_print("%s %d:"X, __FUNCTION__, __LINE__, ##Y)
 
 #define SOCKET_CLOSE(A)         if (A >= 0) {close(A);A = -1;}
-#if 1
+#if 0
 #define TEST_URL					"www.icbc.com.cn"
 #define TEST_DATA					"GET / HTTP/1.1\r\nHost: www.icbc.com.cn\r\nConnection: keep-alive\r\n\r\n"
 #define TEST_PORT					(443)
 #else
-#define TEST_IP						"36.7.87.100"
-#define TEST_DATA					"GET / HTTP/1.1\r\nHost: 36.7.87.100\r\nConnection: keep-alive\r\n\r\n"
-#define TEST_PORT					4433
+#define TEST_IP						"101.132.154.251"
+#define TEST_DATA					"GET / HTTP/1.1\r\nHost: 101.132.154.251\r\nConnection: keep-alive\r\n\r\n"
+#define TEST_PORT					443
 #endif
 
 #define SSL_RECONNECT_MAX			(8)
@@ -44,29 +44,67 @@ static HANDLE hSocketTask;
 static E_OPENAT_NETWORK_STATE NWState;				//网络状态
 static uint8_t ToFlag = 0;
 
-//其它的CA证书
-const char *DEMO_CA_CERT = "-----BEGIN CERTIFICATE-----\r\n"\
-		"MIIDnDCCAwWgAwIBAgIJAMHOdn3g57i0MA0GCSqGSIb3DQEBBQUAMIGRMQswCQYD\r\n"\
-		"VQQGEwJDTjERMA8GA1UECBMIU2hhbmdIYWkxETAPBgNVBAcTCFNoYW5nSGFpMQ8w\r\n"\
-		"DQYDVQQKEwZBSVJNMk0xDTALBgNVBAsTBFNPRlQxFjAUBgNVBAMTDXpodXRpYW5o\r\n"\
-		"dWEtY2ExJDAiBgkqhkiG9w0BCQEWFXpodXRpYW5odWFAYWlybTJtLmNvbTAeFw0x\r\n"\
-		"NzA3MjEwNDEwMzBaFw0xODA3MjEwNDEwMzBaMIGRMQswCQYDVQQGEwJDTjERMA8G\r\n"\
-		"A1UECBMIU2hhbmdIYWkxETAPBgNVBAcTCFNoYW5nSGFpMQ8wDQYDVQQKEwZBSVJN\r\n"\
-		"Mk0xDTALBgNVBAsTBFNPRlQxFjAUBgNVBAMTDXpodXRpYW5odWEtY2ExJDAiBgkq\r\n"\
-		"hkiG9w0BCQEWFXpodXRpYW5odWFAYWlybTJtLmNvbTCBnzANBgkqhkiG9w0BAQEF\r\n"\
-		"AAOBjQAwgYkCgYEAvRGzRy4RWO1XhFaB8uXd1F7cfTxW18coyY2aNnOrwrnQAU5F\r\n"\
-		"mIXL7L076Rl7aOXi2oCiaYt1jKehXIuLJ9Mho9dW/Iid7dpA7n7guzvesEpuciy5\r\n"\
-		"wc4zJOscU9V/M373FwVGBTbyoP4hgGu4LNBu2AyJ6EYgsqAsd/FGNArZTXsCAwEA\r\n"\
-		"AaOB+TCB9jAdBgNVHQ4EFgQUHqGE6j7NmQ5blERny6vIRDDicRowgcYGA1UdIwSB\r\n"\
-		"vjCBu4AUHqGE6j7NmQ5blERny6vIRDDicRqhgZekgZQwgZExCzAJBgNVBAYTAkNO\r\n"\
-		"MREwDwYDVQQIEwhTaGFuZ0hhaTERMA8GA1UEBxMIU2hhbmdIYWkxDzANBgNVBAoT\r\n"\
-		"BkFJUk0yTTENMAsGA1UECxMEU09GVDEWMBQGA1UEAxMNemh1dGlhbmh1YS1jYTEk\r\n"\
-		"MCIGCSqGSIb3DQEJARYVemh1dGlhbmh1YUBhaXJtMm0uY29tggkAwc52feDnuLQw\r\n"\
-		"DAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUFAAOBgQAvjFrd/VyydXeaBjuJbJHR\r\n"\
-		"H2gLli0w5JQ3FbBpEZBlbpvVL4nmonkrCl9Y77lLSTpAN2E3IVJyE7aU2wbPTjJq\r\n"\
-		"qnk0oLPEIkMh26JtnmSNZLmHlTsqpJvlDhH+Rg+vrrUSGZrZIWm+ObhUe0CRxRcH\r\n"\
-		"qPAObM42B+GqVaIK3ZPB8w==\r\n-----END CERTIFICATE-----\r\n";
+//根证书，测试用，如果使用自己的服务器，请自行修改
+const char *RootCert = "-----BEGIN CERTIFICATE-----\r\n"
+		"MIIDwzCCAqugAwIBAgIBATANBgkqhkiG9w0BAQsFADBrMQswCQYDVQQGEwJjaDEL\r\n"
+		"MAkGA1UECBMCemoxCzAJBgNVBAcTAmp4MQ4wDAYDVQQKEwVhZG1pbjEOMAwGA1UE\r\n"
+		"CxMFYWRtaW4xDTALBgNVBAMTBHJvb3QxEzARBgkqhkiG9w0BCQEWBG5vbmUwHhcN\r\n"
+		"MTcxMDE4MDUxMTAwWhcNMjcxMDE4MDUxMTAwWjBrMQswCQYDVQQGEwJjaDELMAkG\r\n"
+		"A1UECBMCemoxCzAJBgNVBAcTAmp4MQ4wDAYDVQQKEwVhZG1pbjEOMAwGA1UECxMF\r\n"
+		"YWRtaW4xDTALBgNVBAMTBHJvb3QxEzARBgkqhkiG9w0BCQEWBG5vbmUwggEiMA0G\r\n"
+		"CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDft3k9SSXXsteJ6W7XWXNDp63aJ7YG\r\n"
+		"CLjV9cnhdntc29WvAzvL2jv8lQTgOJ9WLpnhtDawCx8Hm+uqpfHo1xst6QFTtW6t\r\n"
+		"lG/KmtNYWc8YuDi1l4MX97U4ebm7ZUzNy6RY63qSvPmdXk3hhqKSFa4jL14H6doI\r\n"
+		"juoUyRqm7knJldhjMY0dnW42uHCCAHFIX1r+hYoWhEXK4wE4ft6cWYp1MIGncDTS\r\n"
+		"OQL6odJKeIv5p40PkmfkMAM20zWSmp3YfZVxuLEjBd652sou/yWbCx5LbnQspY/m\r\n"
+		"wVnTTZNdxmvRC6TPg/E+Bo3qhpD/SqK2Ae6ppWBJwj19k55+2mFuTAJvAgMBAAGj\r\n"
+		"cjBwMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFC5rENj+9wbLuQMM4jbkiaF+\r\n"
+		"jleZMAsGA1UdDwQEAwIBBjARBglghkgBhvhCAQEEBAMCAAcwHgYJYIZIAYb4QgEN\r\n"
+		"BBEWD3hjYSBjZXJ0aWZpY2F0ZTANBgkqhkiG9w0BAQsFAAOCAQEAjmp5xahyFueo\r\n"
+		"UrqnvPhwWfiQgitTyI8qM7xAawlMeXrpaD5w2PPk8maKHJ9aEVUL+qXYxnoeUq4L\r\n"
+		"/hvmIWwB4SWoeMVaLBMLGlDhW+tQJoo36+gqTZXtDiGH178UzunjIbODyEl1Q3Ni\r\n"
+		"7BefeRKjmz11HzVi1T4vv7F25pJY02PpDWVJSNGPDNwKE+YgODbntSGEX3NgLqaN\r\n"
+		"8cxQivf9hFPQYihs+b0qt+5J15oJIiI877JlfoNTUtoLakPyt9wnvZgTHhH8M/bd\r\n"
+		"44TNS8Aha2L7WhmBmaOfIQrjScjOnUlfahR/vPEw3BBvnCs1w87oMb+iGCU2AVJn\r\n"
+		"sL+R9Q/sTA==\r\n"
+		"-----END CERTIFICATE-----";
 
+const char *ClientCert = "-----BEGIN CERTIFICATE-----\r\n"
+		"MIIDPjCCAiagAwIBAgIBBjANBgkqhkiG9w0BAQsFADBrMQswCQYDVQQGEwJjaDEL\r\n"
+		"MAkGA1UECBMCemoxCzAJBgNVBAcTAmp4MQ4wDAYDVQQKEwVhZG1pbjEOMAwGA1UE\r\n"
+		"CxMFYWRtaW4xDTALBgNVBAMTBHJvb3QxEzARBgkqhkiG9w0BCQEWBG5vbmUwHhcN\r\n"
+		"MTcxMDE5MDYyODAwWhcNMTgxMDE5MDYyODAwWjBtMQswCQYDVQQGEwJjaDELMAkG\r\n"
+		"A1UECBMCemoxCzAJBgNVBAcTAmp4MQ0wCwYDVQQKEwRsdWF0MQ0wCwYDVQQLEwRs\r\n"
+		"dWF0MREwDwYDVQQDDAhzc2xfdGVzdDETMBEGCSqGSIb3DQEJARYEbm9uZTCBnzAN\r\n"
+		"BgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEAx6y1x3XuGa9B0KI9KZRMvjAkUKRV/HXM\r\n"
+		"f2MhI6Q5EqyQIJbZBdfu7Tenobgggdncy0TT/eXZW8oTTM8cB+S4rGj4h98Osk7C\r\n"
+		"XhYx/7Vd883jicfH+VJks1nvCNZI8bifSCJFHHtY4tNME8MbLxUu3DzRBYXzq2ZS\r\n"
+		"e37aenI97EcCAwEAAaNvMG0wDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUOn+eScMY\r\n"
+		"BS2S8E1OYL/O/4+11ZAwCwYDVR0PBAQDAgSwMBEGCWCGSAGG+EIBAQQEAwIFoDAe\r\n"
+		"BglghkgBhvhCAQ0EERYPeGNhIGNlcnRpZmljYXRlMA0GCSqGSIb3DQEBCwUAA4IB\r\n"
+		"AQAlMHCy9FGRaF25TaHhEftbTe8iydq4/4xJUSLP3QcbDZxYDzYeBs9IgIv6BX24\r\n"
+		"KIuxSwgwWNhTqEeapgI+pnImQCLGEjNq8Wn/JYXCrclqkMmQr1CHJiCEZtYBN/ou\r\n"
+		"ky4wgEfTKUMqlRInZFrsQs9HFjINqXwz9Gg2PQeshPHVESolBBHohl831yuqMyQA\r\n"
+		"YE0weAXFfp0VEdetVSetyVqCO6lb5XQZlozsKw6h5SUDw+uTYxBZdnyItOmhZdt3\r\n"
+		"swZgYd3Dbg8KAI0P/PETf4xnMVR2NicbYc+zOuA68EUxwTQi6JkHeLaFNtAnltr8\r\n"
+		"dedN8rjgY/b0z2MTzVY3OGLx\r\n"
+		"-----END CERTIFICATE-----";
+
+const char *ClientRSAKey = "-----BEGIN RSA PRIVATE KEY-----\r\n"
+		"MIICXgIBAAKBgQDHrLXHde4Zr0HQoj0plEy+MCRQpFX8dcx/YyEjpDkSrJAgltkF\r\n"
+		"1+7tN6ehuCCB2dzLRNP95dlbyhNMzxwH5LisaPiH3w6yTsJeFjH/tV3zzeOJx8f5\r\n"
+		"UmSzWe8I1kjxuJ9IIkUce1ji00wTwxsvFS7cPNEFhfOrZlJ7ftp6cj3sRwIDAQAB\r\n"
+		"AoGBAMRVFggh9RRcNyKl4+3WW/9F5u9EJygty/4VwqgA+f1an/zrVklgoRWu+60Q\r\n"
+		"FyaWyXs1Gh00vBx8/a0wmCdKxilED3abjT6jbzoAKJYsjcRqthNAFlb6bNHdyQPO\r\n"
+		"HZvuKsBS6ZHCeSoNYFuW4ncGCfEsvV/qRzYkAbr5CqVPxriBAkEA4n/lBp2ylgfb\r\n"
+		"xK8WbGOXO+fPPAj8X7Ap+iTIjnespn0sIaMS1xMyQ5hXhJu7+BGsLDg6X8tWIWWt\r\n"
+		"c7khvydkTwJBAOGuZlpxuJ+pU1Dlsd6W8fki3B1Mi+4U8dRiiq86lehw7vo0oI5U\r\n"
+		"1NySbKqQDERL+SbRYL73a3CgBllq5TpNYokCQQC7BIE1ukY4DRsQRsWMD5tTEm+R\r\n"
+		"kZXY6JtweKjEwdnjyl0DFSQ8RBRvrb0tuG03QlhYVsEUUc+3Wb4jXEyaCkuPAkAU\r\n"
+		"aBatOvc8yKzV9c8dl3yN0I8ivxcwEgjD8Z0ktyFzATM6wKN7+0O8JilZSukxC8Wd\r\n"
+		"svUSj4DRkEbCsx3DJdgxAkEAuBZ0Dmv3XYJ3zn/MAsNZzWLbbN+YPZ11nUTNE9FU\r\n"
+		"M3paJdqmD70wz3tn5QhcIXbJ/90qs4iPNZ52qiOYnaMD3Q==\r\n"
+		"-----END RSA PRIVATE KEY-----";
 #ifdef TEST_URL
 static uint32_t SSL_Gethostbyname(void)
 {
@@ -143,6 +181,8 @@ static int32_t Socket_ConnectServer(void)
 	}
 }
 
+
+
 /**
  * @brief 发送SSL封装好的数据，如果使用socket编程的，可以直接参考，如果使用AT指令编程的，那么需要自己来实现
  * @param Socketfd [in] socket id，如果是AT指令，单路链接，传入0，不用管，多路链接的，传入CIPSTART时用的通道号
@@ -155,6 +195,7 @@ static int32_t SSL_SocketTx(int32_t Socketfd, void *Buf, uint16_t TxLen)
     struct timeval tm;
     fd_set WriteSet;
 	int32_t Result;
+	DBG_INFO("%dbyte need send", TxLen);
 	Result = send(Socketfd, (uint8_t *)Buf, TxLen, 0);
 
 	if (Result < 0)
@@ -209,6 +250,7 @@ static int32_t SSL_SocketRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
         	DBG_ERROR("recv error %d", socket_errno(Socketfd));
             return -1;
         }
+        DBG_INFO("recv %d\r\n", Result);
 		return Result;
     }
     else
@@ -217,37 +259,7 @@ static int32_t SSL_SocketRx(int32_t Socketfd, void *Buf, uint16_t RxLen)
     }
 }
 
-static void SSL_HexPrint(uint8_t *Data, uint8_t Len)
-{
-	uint8_t uart_buf[128];
-    uint32_t i,j, Temp;
-    j = 0;
 
-    for (i = 0; i < Len; i++)
-    {
-    	Temp = Data[i] >> 4;
-    	if (Temp < 10 )
-    	{
-    		uart_buf[j++] = Temp + '0';
-    	}
-    	else
-    	{
-    		uart_buf[j++] = Temp + 'A' - 10;
-    	}
-    	Temp = Data[i] & 0x0f;
-    	if (Temp < 10 )
-    	{
-    		uart_buf[j++] = Temp + '0';
-    	}
-    	else
-    	{
-    		uart_buf[j++] = Temp + 'A' - 10;
-    	}
-    	uart_buf[j++] = ' ';
-    }
-    uart_buf[j++] = 0;
-    DBG_INFO("%s", uart_buf);
-}
 
 static void SSL_Task(PVOID pParameter)
 {
@@ -270,18 +282,12 @@ static void SSL_Task(PVOID pParameter)
 	{
 		Quit = 0;
 	}
-	//需要对时间校准，DEMO中简化为直接设置时间了
-	Datetime.nYear = 2017;
-	Datetime.nMonth = 10;
-	Datetime.nDay = 15;
-	Datetime.nHour = 11;
-	Datetime.nMin = 14;
-	Datetime.nSec = 11;
-	iot_os_set_system_datetime(&Datetime);
 
-	Ret = SSL_LoadKey(SSLCtrl, SSL_OBJ_X509_CERT, DEMO_CA_CERT, strlen(DEMO_CA_CERT), NULL);
 
-	DBG_INFO("add cert ret = %d %d", Ret, SSLCtrl->chain_length);
+	Ret = SSL_LoadKey(SSLCtrl, SSL_OBJ_X509_CACERT, RootCert, strlen(RootCert), NULL);
+	//如果是双向认证的，需要加载客户端的证书和私钥
+	Ret = SSL_LoadKey(SSLCtrl, SSL_OBJ_X509_CERT, ClientCert, strlen(ClientCert), NULL);
+	Ret = SSL_LoadKey(SSLCtrl, SSL_OBJ_RSA_KEY, ClientRSAKey, strlen(ClientRSAKey), NULL);
 
 	while (!Quit)
 	{
@@ -331,6 +337,14 @@ static void SSL_Task(PVOID pParameter)
 			}
 			continue;
 		}
+		//需要对时间校准，DEMO中简化为直接设置时间了
+		Datetime.nYear = 2017;
+		Datetime.nMonth = 10;
+		Datetime.nDay = 19;
+		Datetime.nHour = 11;
+		Datetime.nMin = 14;
+		Datetime.nSec = 11;
+		iot_os_set_system_datetime(&Datetime);
 
 		DBG_INFO("start ssl handshake");
 		SSLLink = SSL_NewLink(SSLCtrl, Socketfd, NULL, 0, NULL, NULL);
@@ -345,23 +359,15 @@ static void SSL_Task(PVOID pParameter)
 		if (Ret)
 		{
 			DBG_ERROR("ssl handshake fail %d", Ret);
+			Quit = 1;
+			continue;
 		}
 		else
 		{
-			DBG_INFO("ssl handshake ok, cert info:");
+			DBG_INFO("ssl handshake OK");
 
-			for(i = 0; i < X509_NUM_DN_TYPES; i++)
-			{
-				DBG_INFO("%s", SSLLink->x509_ctx->cert_dn[i]);
-			}
-			for(i = 0; i < X509_NUM_DN_TYPES; i++)
-			{
-				DBG_INFO("%s", SSLLink->x509_ctx->ca_cert_dn[i]);
-			}
 		}
-		SSL_HexPrint(SSLLink->session->master_secret, 16);
-		SSL_HexPrint(SSLLink->session->master_secret + 16, 16);
-		SSL_HexPrint(SSLLink->session->master_secret + 32, 16);
+
 		iot_os_start_timer(hTimer, 1*1000);//1秒后发送一次HTTP请求
 		ToFlag = 0;
 		Error = 0;
@@ -375,6 +381,7 @@ static void SSL_Task(PVOID pParameter)
 				{
 				case USER_MSG_TIMER:
 					ToFlag = 0;
+					DBG_INFO("HTTP GET");
 					Ret = SSL_Write(SSLLink, TEST_DATA, strlen(TEST_DATA));
 					if (Ret < 0)
 					{
@@ -471,4 +478,5 @@ void app_main(void)
 	NWState = OPENAT_NETWORK_DISCONNECT;
 	hTimer = iot_os_create_timer(SSL_TimerHandle, NULL);
 	SSL_RegSocketCallback(SSL_SocketTx, SSL_SocketRx);
+	iot_pmd_exit_deepsleep();
 }
