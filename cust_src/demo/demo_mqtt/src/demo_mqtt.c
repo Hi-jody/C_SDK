@@ -5,17 +5,11 @@
  * 3、用户的客户端上订阅1个主题，air202/gprs/rx，为防止冲突，请用户修改为其他主题，或者使用自己的服务器
  * 4、connect成功后，模块往air202/gprs/tx主题上publish一条登录消息
  * 5、用户往air202/gprs/tx主题上publish数据，模块接收后原样publish到air202/gprs/rx
- * 6、用户往air202/ctrl主题上publish"quit"，模块往air202/gprs/tx主题上publish一条退出消息，
+ * 6、用户往air202/ctrl主题上publish"quit"，模块往air202/gprs/tx主题上publish一条qos0的退出消息，
  * 	    模块取消所有订阅，disconnect，任务停止
  * 7、DEMO所有报文长度限制在1460，可以修改
- * ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
- * 8、DEMO不处理服务器的粘包，QOS控制只采用最简单的顺序控制
- *   在测试时，如果没有修改DEMO，DEMO订阅主题使用QOS2，不要短时间内（1S）在客户端上快速发布多条消息，尤其是QOS2的消息
- *   可能会导致DEMO中QOS控制逻辑出错或者收到粘包
- * 9、建议在客户端接收到模块返回的信息（和客户端发布的是一样的内容），再发布下一条
- * ！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！
- * 10、MQTT协议由于经过中转，所以客户端收到模块的返回信息，大概在1~3秒左右都是正常
- * 11、宏定义和全局变量可根据实际情况修改
+ * 8、MQTT协议由于经过中转，所以客户端收到模块的返回信息，大概在1~3秒左右都是正常
+ * 9、宏定义和全局变量可根据实际情况修改
  */
 #include "string.h"
 #include "iot_os.h"
@@ -46,9 +40,9 @@ extern T_AMOPENAT_INTERFACE_VTBL* g_s_InterfaceVtbl;
 #define MQTT_PAYLOAD_MAX			(1400)			//有效载荷最大长度1400
 #define MQTT_MSG_LEN_MAX			(1460)			//MQTT报文最大长度1460
 #define MQTT_HEAD_LEN_MAX			(128)			//MQTT报头最大长度128
-#define MQTT_TCP_TO					(60)			//MQTT TCP收发超时60S
+#define MQTT_TCP_TO					(30)			//MQTT TCP收发超时30S
 #define MQTT_HEAT_TO				(120)			//MQTT心跳周期120S
-
+#define MQTT_TOPIC_LEN					(256)
 #ifdef __SSL_ENABLE__
 #define MQTT_SSL_URL				"mqtt.test.com"
 #define MQTT_SSL_PORT				(18883)
@@ -83,10 +77,13 @@ static uint8_t MQTTRxBuf[MQTT_MSG_LEN_MAX];			//MQTT接收报文缓存
 static uint8_t MQTTTxBuf[MQTT_MSG_LEN_MAX];			//MQTT发送报文缓存
 static uint8_t MQTTTempBuf[MQTT_PAYLOAD_MAX];		//MQTT临时数据缓存
 static uint8_t MQTTPayload[MQTT_PAYLOAD_MAX];		//MQTT有效载荷缓存
+static uint8_t MQTTAnalyzeBuf[MQTT_MSG_LEN_MAX * 2];//MQTT接收需要解析的数据缓存
+
 static Buffer_Struct TxBuffer;
 static Buffer_Struct PayloadBuffer;
 static uint16_t gPackID = 0;						//全局报文标识符
 static uint8_t ToFlag = 0;
+static int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *QuitFlag);
 static uint32_t MQTT_Gethostbyname(void)
 {
     //域名解析
@@ -362,223 +359,6 @@ static int32_t MQTT_Unsubscribe(int32_t Socketfd)
 	return 0;
 }
 
-//MQTT Publish消息到服务器过程, Qos只能是0，MQTT_MSG_QOS1，MQTT_MSG_QOS2之一
-//DEMO默认使用CleanSession, 因此IsDup必须填0
-static int32_t MQTT_PublishToServer(int32_t Socketfd, uint8_t Qos, uint8_t IsDup, uint8_t IsRetain)
-{
-	uint32_t TxLen;
-	int32_t RxLen;
-	uint8_t Flag;
-	MQTT_HeadStruct Rxhead;
-
-	switch (Qos)
-	{
-	case 0:
-		break;
-	case MQTT_MSG_QOS1:
-		break;
-	case MQTT_MSG_QOS2:
-		break;
-	default:
-		return -1;
-	}
-	Flag = Qos;
-	if (Qos)
-	{
-		gPackID++;
-		if (IsRetain)
-		{
-			Qos |= MQTT_MSG_RETAIN;
-		}
-		if (IsDup)
-		{
-			Qos |= MQTT_MSG_DUP;
-		}
-	}
-	else
-	{
-		if (IsRetain)
-		{
-			Qos |= MQTT_MSG_RETAIN;
-		}
-	}
-	TxBuffer.Pos = 0;
-	TxLen = MQTT_PublishMsg(&TxBuffer, Flag, gPackID, DemoPublishTopicGPRS, PayloadBuffer.Data, PayloadBuffer.Pos);
-	if (MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO) < 0)
-	{
-		return -1;
-	}
-	//QOS0
-	if (!Qos)
-	{
-		DBG_INFO("PUBLISH QOS0 OK!");
-		return 0;
-	}
-
-	RxLen = MQTT_TCPRx(Socketfd, MQTT_TCP_TO);
-	if (RxLen <= 0)
-	{
-		return -1;
-	}
-	if (MQTT_RxPreDeal(&Rxhead, RxLen) < 0)
-	{
-		return -1;
-	}
-	//QOS1
-	if (Qos == MQTT_MSG_QOS1)
-	{
-		if (Rxhead.Cmd != MQTT_CMD_PUBACK)
-		{
-			DBG_ERROR("UNEXPECT CMD %02x", Rxhead.Cmd);
-			return -1;
-		}
-		if (Rxhead.PackID != gPackID)
-		{
-			DBG_ERROR("gPackID ERROR %u %u", (uint32_t)Rxhead.PackID, (uint32_t)gPackID);
-			return -1;
-		}
-		DBG_INFO("PUBLISH QOS1 OK!");
-		return 0;
-	}
-	else
-	{
-		//QOS2的第1阶段
-		if (Rxhead.Cmd != MQTT_CMD_PUBREC)
-		{
-			DBG_ERROR("UNEXPECT CMD %02x", Rxhead.Cmd);
-			return -1;
-		}
-		if (Rxhead.PackID != gPackID)
-		{
-			DBG_ERROR("gPackID ERROR %u %u", (uint32_t)Rxhead.PackID, (uint32_t)gPackID);
-			return -1;
-		}
-	}
-	//QOS2的第2~3阶段
-	TxBuffer.Pos = 0;
-	TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBREL, gPackID);
-	if (MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO) < 0)
-	{
-		return -1;
-	}
-
-	RxLen = MQTT_TCPRx(Socketfd, MQTT_TCP_TO);
-	if (RxLen <= 0)
-	{
-		return -1;
-	}
-	if (MQTT_RxPreDeal(&Rxhead, RxLen) < 0)
-	{
-		return -1;
-	}
-
-	if (Rxhead.Cmd != MQTT_CMD_PUBCOMP)
-	{
-		DBG_ERROR("UNEXPECT CMD %02x", Rxhead.Cmd);
-		return -1;
-	}
-	if (Rxhead.PackID != gPackID)
-	{
-		DBG_ERROR("gPackID ERROR %u %u", (uint32_t)Rxhead.PackID, (uint32_t)gPackID);
-		return -1;
-	}
-	DBG_INFO("PUBLISH QOS2 OK!");
-	return 0;
-}
-
-//MQTT 服务器Publish消息到模块过程，返回来自哪一个主题序号，0 "air202/gprs/tx" 1 "air202/ctrl"
-static int32_t MQTT_PublishFromServer(int32_t Socketfd, int32_t RxLen)
-{
-	int32_t IsFormCtrlTopic;
-	uint32_t TxLen;
-	MQTT_HeadStruct Rxhead;
-	uint16_t PackID;
-
-	TxBuffer.Pos = 0;
-	PayloadBuffer.Pos = 0;
-	if (MQTT_RxPreDeal(&Rxhead, RxLen) < 0)
-	{
-		return -1;
-	}
-	if (Rxhead.Cmd != MQTT_CMD_PUBLISH)
-	{
-		DBG_ERROR("UNEXPECT CMD %02x", Rxhead.Cmd);
-		return -1;
-	}
-	if (!strcmp(Rxhead.Data, DemoSub[0].Char))
-	{
-		IsFormCtrlTopic = 0;
-	}
-	else if (!strcmp(Rxhead.Data, DemoSub[1].Char))
-	{
-		IsFormCtrlTopic = 1;
-	}
-	else
-	{
-		DBG_ERROR("unknow topic %s", Rxhead.Data);
-		return -1;
-	}
-
-	PackID = Rxhead.PackID;
-	switch (Rxhead.Flag & MQTT_MSG_QOS_MASK)
-	{
-	case 0:
-		DBG_INFO("RX PUBLISH QOS0 OK! %d", IsFormCtrlTopic);
-		return IsFormCtrlTopic;
-
-	case MQTT_MSG_QOS1:
-		TxBuffer.Pos = 0;
-		TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBACK, PackID);
-		if (MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO) < 0)
-		{
-			return -1;
-		}
-		DBG_INFO("RX PUBLISH QOS1 OK! %d", IsFormCtrlTopic);
-		return IsFormCtrlTopic;
-
-	case MQTT_MSG_QOS2:
-		TxBuffer.Pos = 0;
-		TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBREC, PackID);
-		if (MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO) < 0)
-		{
-			return -1;
-		}
-
-		RxLen = MQTT_TCPRx(Socketfd, MQTT_TCP_TO);
-		if (RxLen <= 0)
-		{
-			return -1;
-		}
-		if (MQTT_RxPreDeal(&Rxhead, RxLen) < 0)
-		{
-			return -1;
-		}
-		if (Rxhead.Cmd != MQTT_CMD_PUBREL)
-		{
-			DBG_ERROR("UNEXPECT CMD %02x", Rxhead.Cmd);
-			return -1;
-		}
-		if (Rxhead.PackID != PackID)
-		{
-			DBG_ERROR("PackID ERROR %u %u", (uint32_t)Rxhead.PackID, (uint32_t)PackID);
-			return -1;
-		}
-
-		TxBuffer.Pos = 0;
-		TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBCOMP, PackID);
-		if (MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO) < 0)
-		{
-			return -1;
-		}
-		DBG_INFO("RX PUBLISH QOS2 OK! %d", IsFormCtrlTopic);
-		return IsFormCtrlTopic;
-		break;
-	default:
-		DBG_ERROR("unknow qos %02x", Rxhead.Flag);
-		return -1;
-	}
-}
-
 //MQTT 心跳过程
 static int32_t MQTT_Heart(int32_t Socketfd)
 {
@@ -609,6 +389,149 @@ static int32_t MQTT_Heart(int32_t Socketfd)
 	return 0;
 }
 
+int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *QuitFlag)
+{
+	int32_t TxLen;
+	switch (Rxhead->Cmd)
+	{
+	case MQTT_CMD_PUBLISH:
+		if (!memcmp(DemoSub[0].Char, Rxhead->Data, Rxhead->DataLen))
+		{
+			DBG_INFO("from sub 0");
+			TxBuffer.Pos = 0;
+			gPackID++;
+			TxLen = MQTT_PublishMsg(&TxBuffer, MQTT_PUBLISH_DEFAULT_QOS, gPackID,
+					DemoPublishTopicGPRS, PayloadBuffer.Data, PayloadBuffer.Pos);
+			if (TxLen <= 0)
+			{
+				return -1;
+			}
+			else
+			{
+				return MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO);
+			}
+		}
+		else if (!memcmp(DemoSub[1].Char, Rxhead->Data, Rxhead->DataLen))
+		{
+			DBG_INFO("from sub 1");
+			if (!memcmp(PayloadBuffer.Data, "quit", 4))
+			{
+				*QuitFlag = 1;
+			}
+		}
+
+
+		switch (Rxhead->Flag & MQTT_MSG_QOS_MASK)
+		{
+		case 0:
+			break;
+		case MQTT_MSG_QOS1:
+			TxBuffer.Pos = 0;
+			TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBACK, Rxhead->PackID);
+			if (TxLen <= 0)
+			{
+				return -1;
+			}
+			else
+			{
+				return MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO);
+			}
+			break;
+		case MQTT_MSG_QOS2:
+			TxBuffer.Pos = 0;
+			TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBREC, Rxhead->PackID);
+			if (TxLen <= 0)
+			{
+				return -1;
+			}
+			else
+			{
+				return MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO);
+			}
+			break;
+		}
+		break;
+	case MQTT_CMD_PUBACK:
+		//qos1 OK
+		break;
+
+	case MQTT_CMD_PUBREC:
+		DBG_INFO("%d",Rxhead->PackID);
+		TxBuffer.Pos = 0;
+		TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBREL, Rxhead->PackID);
+		if (TxLen <= 0)
+		{
+			return -1;
+		}
+		else
+		{
+			return MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO);
+		}
+		break;
+
+	case MQTT_CMD_PUBREL:
+		TxBuffer.Pos = 0;
+		TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBCOMP, Rxhead->PackID);
+		if (TxLen <= 0)
+		{
+			return -1;
+		}
+		else
+		{
+			return MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO);
+		}
+		break;
+	case MQTT_CMD_PUBCOMP:
+		break;
+	case MQTT_CMD_PINGRESP:
+		break;
+
+	case MQTT_CMD_CONNACK:
+
+		if (Rxhead->Data[1])
+		{
+			DBG_ERROR("CONNACK FAIL %02x %02x", Rxhead->Data[0], Rxhead->Data[1]);
+		}
+		else
+		{
+
+		}
+		break;
+
+	case MQTT_CMD_SUBACK:
+
+		switch (PayloadBuffer.Data[0])
+		{
+		case 0:
+		case 1:
+		case 2:
+			DBG_INFO("Subscribe ok %02x", PayloadBuffer.Data[0]);
+
+			break;
+		default:
+			DBG_ERROR("Subscribe fail %02x", PayloadBuffer.Data[0]);
+			break;
+		}
+		break;
+
+	case MQTT_CMD_UNSUBACK:
+		switch (PayloadBuffer.Data[0])
+		{
+		case 0:
+		case 1:
+		case 2:
+			DBG_INFO("UnSubscribe ok %02x", PayloadBuffer.Data[0]);
+
+			break;
+		default:
+			DBG_ERROR("UnSubscribe fail %02x", PayloadBuffer.Data[0]);
+			break;
+		}
+		break;
+	}
+	return 0;
+}
+
 static void MQTT_Task(PVOID pParameter)
 {
 	USER_MESSAGE*    msg;
@@ -616,6 +539,15 @@ static void MQTT_Task(PVOID pParameter)
 	int32_t RxLen = 0;
 	int32_t Socketfd = -1;
 	int32_t TopicSN, Result;
+
+	MQTT_HeadStruct Rxhead;
+	uint8_t *Payload = NULL;
+	uint32_t PayloadLen;
+	uint32_t DealLen = 0;
+	uint32_t DummyLen = 0xffffffff;
+	uint32_t LastRxByte;
+	int8_t Topic[MQTT_TOPIC_LEN];
+	uint8_t QuitFlag;
 	TxBuffer.Data = MQTTTxBuf;
 	TxBuffer.MaxLen = sizeof(MQTTTxBuf);
 	TxBuffer.Pos = 0;
@@ -685,63 +617,87 @@ static void MQTT_Task(PVOID pParameter)
 		DBG_INFO("MQTT PUBLISH hello Start");
 		strcpy(PayloadBuffer.Data, "hello, this is air202 mqtt demo!");
 		PayloadBuffer.Pos = strlen(PayloadBuffer.Data);
-		if (MQTT_PublishToServer(Socketfd, MQTT_PUBLISH_DEFAULT_QOS, 0, 0) < 0)
+		TxBuffer.Pos = 0;
+		gPackID++;
+		MQTT_PublishMsg(&TxBuffer, MQTT_PUBLISH_DEFAULT_QOS, gPackID,
+							DemoPublishTopicGPRS, PayloadBuffer.Data, PayloadBuffer.Pos);
+		if (MQTT_TCPTx(Socketfd, TxBuffer.Pos, MQTT_TCP_TO) <= 0)
 		{
-			DBG_INFO("MQTT PUBLISH hello Fail");
+			DBG_INFO("MQTT send first message fail");
 			continue;
 		}
 
 		iot_os_start_timer(hTimer, MQTT_HEAT_TO*1000);//启动心跳计时
 		ToFlag = 0;
 		Error = 0;
+		LastRxByte = 0;
 		while(!Error && !Quit)
 		{
 			RxLen = 0;
 			RxLen = MQTT_TCPRx(Socketfd, 1);
 			if (RxLen > 0)
 			{
-				TopicSN = MQTT_PublishFromServer(Socketfd, RxLen);
-				switch (TopicSN)
+				DBG_INFO("%d", LastRxByte);
+				memcpy(MQTTAnalyzeBuf + LastRxByte, MQTTRxBuf, RxLen);
+				DealLen = 0;
+
+				RxLen += LastRxByte;
+				LastRxByte = 0;
+				QuitFlag = 0;
+				DBG_INFO("%d", RxLen);
+				do
 				{
-				case 0:
-					//主题0的消息，原封不动发给服务器
-					Result = MQTT_PublishToServer(Socketfd, MQTT_PUBLISH_DEFAULT_QOS, 0, 0);
-					if (Result < 0)
+					DummyLen = 0xffffffff;
+					memset(Topic, 0, sizeof(Topic));
+					Rxhead.Data = Topic;
+					Payload = MQTT_DecodeMsg(&Rxhead, MQTT_HEAD_LEN_MAX, &PayloadLen, MQTTAnalyzeBuf + DealLen, RxLen - DealLen, &DummyLen);
+					//DBG_INFO("%d %d %d", DummyLen, DealLen, RxLen - DealLen);
+					if ((uint32_t)Payload != INVALID_HANDLE_VALUE)
 					{
-						Error = 1;
-					}
-					break;
-				case 1:
-					PayloadBuffer.Data[PayloadBuffer.Pos] = 0;
-					DBG_INFO("%s",PayloadBuffer.Data);
-					if (!strcmp(PayloadBuffer.Data, "quit"))
-					{
-						Quit = 1;
-						DBG_INFO("MQTT QUIT Start");
-						strcpy(PayloadBuffer.Data, "good bye!");
-						PayloadBuffer.Pos = strlen(PayloadBuffer.Data);
-						Result = MQTT_PublishToServer(Socketfd, MQTT_PUBLISH_DEFAULT_QOS, 0, 0);
-						if (Result < 0)
+						Rxhead.Data[Rxhead.DataLen] = 0;
+						if (Payload && PayloadLen)
+						{
+							memcpy(PayloadBuffer.Data, Payload, PayloadLen);
+							PayloadBuffer.Pos = PayloadLen;
+						}
+						if (MQTT_MessageAnalyze(&Rxhead, Socketfd, &QuitFlag) < 0)
 						{
 							Error = 1;
 							break;
 						}
-						Result = MQTT_Unsubscribe(Socketfd);
-						if (Result < 0)
+						DealLen += DummyLen;
+
+						if (QuitFlag)
 						{
-							DBG_ERROR("!");
+							DBG_INFO("MQTT PUBLISH goodbyte");
+							strcpy(PayloadBuffer.Data, "goodbyte");
+							PayloadBuffer.Pos = strlen(PayloadBuffer.Data);
+							TxBuffer.Pos = 0;
+							MQTT_PublishMsg(&TxBuffer, 0, gPackID,
+												DemoPublishTopicGPRS, PayloadBuffer.Data, PayloadBuffer.Pos);
+							MQTT_TCPTx(Socketfd, TxBuffer.Pos, MQTT_TCP_TO);
+							MQTT_Unsubscribe(Socketfd);
+							MQTT_SingleMsg(&TxBuffer, MQTT_CMD_DISCONNECT);
+							MQTT_TCPTx(Socketfd, TxBuffer.Pos, MQTT_TCP_TO);
+							Quit = 1;
 							break;
 						}
-						TxBuffer.Pos = 0;
-						Result = MQTT_SingleMsg(&TxBuffer, MQTT_CMD_DISCONNECT);
-						MQTT_TCPTx(Socketfd, Result, MQTT_TCP_TO);
-						iot_os_sleep(5000);
 					}
-					break;
-				default:
-					Error = 1;
-					break;
-				}
+					else
+					{
+						if (DummyLen)
+						{
+							DBG_ERROR("MQTT MSG ERROR!");
+						}
+						else
+						{
+							LastRxByte = RxLen - DealLen;
+							memcpy(MQTTAnalyzeBuf, MQTTAnalyzeBuf + DealLen, LastRxByte);
+							DealLen = RxLen;
+							DBG_INFO("%d", LastRxByte);
+						}
+					}
+				}while (DealLen != RxLen);
 				continue;
 			}
 			else if (RxLen < 0)
@@ -751,7 +707,7 @@ static void MQTT_Task(PVOID pParameter)
 			}
 			else
 			{
-				while (ToFlag)
+				if (ToFlag)
 				{
 					iot_os_wait_message(hSocketTask, (PVOID)&msg);
 					switch(msg->Type)
@@ -832,4 +788,5 @@ VOID app_main(VOID)
                         "demo_socket_mqtt");
 	NWState = OPENAT_NETWORK_DISCONNECT;
 	hTimer = iot_os_create_timer(MQTT_TimerHandle, NULL);
+	iot_pmd_exit_deepsleep();
 }
