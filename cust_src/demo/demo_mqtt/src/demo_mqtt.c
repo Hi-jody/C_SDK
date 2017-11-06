@@ -36,7 +36,7 @@ extern T_AMOPENAT_INTERFACE_VTBL* g_s_InterfaceVtbl;
 
 
 #define MQTT_RECONNECT_MAX			(8)				//最大重连次数
-#define MQTT_PUBLISH_DEFAULT_QOS	MQTT_MSG_QOS1	//模块PUBLISH的默认QOS,QOS1
+#define MQTT_PUBLISH_DEFAULT_QOS	MQTT_MSG_QOS2	//模块PUBLISH的默认QOS,QOS1
 #define MQTT_PAYLOAD_MAX			(1400)			//有效载荷最大长度1400
 #define MQTT_MSG_LEN_MAX			(1460)			//MQTT报文最大长度1460
 #define MQTT_HEAD_LEN_MAX			(128)			//MQTT报头最大长度128
@@ -371,30 +371,17 @@ static int32_t MQTT_Heart(int32_t Socketfd)
 	{
 		return -1;
 	}
-	RxLen = MQTT_TCPRx(Socketfd, MQTT_TCP_TO);
-	if (RxLen <= 0)
-	{
-		return -1;
-	}
-	if (MQTT_RxPreDeal(&Rxhead, RxLen) < 0)
-	{
-		return -1;
-	}
-	if (Rxhead.Cmd != MQTT_CMD_PINGRESP)
-	{
-		DBG_ERROR("UNEXPECT CMD %02x", Rxhead.Cmd);
-		return -1;
-	}
-	DBG_INFO("HEART OK!");
 	return 0;
 }
 
 int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *QuitFlag)
 {
 	int32_t TxLen;
+	uint8_t Flag;
 	switch (Rxhead->Cmd)
 	{
 	case MQTT_CMD_PUBLISH:
+		Flag = Rxhead->Flag;
 		if (!memcmp(DemoSub[0].Char, Rxhead->Data, Rxhead->DataLen))
 		{
 			DBG_INFO("from sub 0");
@@ -408,7 +395,7 @@ int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *Quit
 			}
 			else
 			{
-				return MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO);
+				MQTT_TCPTx(Socketfd, TxLen, MQTT_TCP_TO);
 			}
 		}
 		else if (!memcmp(DemoSub[1].Char, Rxhead->Data, Rxhead->DataLen))
@@ -420,12 +407,12 @@ int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *Quit
 			}
 		}
 
-
-		switch (Rxhead->Flag & MQTT_MSG_QOS_MASK)
+		switch (Flag & MQTT_MSG_QOS_MASK)
 		{
 		case 0:
 			break;
 		case MQTT_MSG_QOS1:
+
 			TxBuffer.Pos = 0;
 			TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBACK, Rxhead->PackID);
 			if (TxLen <= 0)
@@ -438,6 +425,7 @@ int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *Quit
 			}
 			break;
 		case MQTT_MSG_QOS2:
+
 			TxBuffer.Pos = 0;
 			TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBREC, Rxhead->PackID);
 			if (TxLen <= 0)
@@ -453,9 +441,11 @@ int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *Quit
 		break;
 	case MQTT_CMD_PUBACK:
 		//qos1 OK
+		DBG_INFO("PUBACK");
 		break;
 
 	case MQTT_CMD_PUBREC:
+		DBG_INFO("PUBREC");
 		DBG_INFO("%d",Rxhead->PackID);
 		TxBuffer.Pos = 0;
 		TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBREL, Rxhead->PackID);
@@ -471,6 +461,8 @@ int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *Quit
 
 	case MQTT_CMD_PUBREL:
 		TxBuffer.Pos = 0;
+		DBG_INFO("PUBREL");
+		DBG_INFO("%d",Rxhead->PackID);
 		TxLen = MQTT_PublishCtrlMsg(&TxBuffer, MQTT_CMD_PUBCOMP, Rxhead->PackID);
 		if (TxLen <= 0)
 		{
@@ -482,6 +474,7 @@ int MQTT_MessageAnalyze(MQTT_HeadStruct *Rxhead, int32_t Socketfd, uint8_t *Quit
 		}
 		break;
 	case MQTT_CMD_PUBCOMP:
+		DBG_INFO("PUBCOMP");
 		break;
 	case MQTT_CMD_PINGRESP:
 		break;
