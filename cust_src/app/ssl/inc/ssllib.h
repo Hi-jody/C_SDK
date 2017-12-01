@@ -110,4 +110,10 @@ int32_t SSL_Write(SSL *SSLLink, const uint8_t *OutData, uint16_t OutLen);
  */
 int32_t SSL_LoadKey(SSL_CTX *SSLCtrl, int32_t Type, const uint8_t *Data, int32_t Len, const int8_t *Password);
 
+/**
+ * @brief 验证服务器证书，比原版改进在于可以使用次级根证书来验证，一般浏览器内置了大量次级根证书，可以导出使用，在测试实际网页时，适合使用本函数
+ * @param SSLLink SSL连接结构体的地址指针
+ * @return 0成功 其他失败
+ */
+int32_t SSL_VerifyCert(SSL *SSLLink);
 #endif

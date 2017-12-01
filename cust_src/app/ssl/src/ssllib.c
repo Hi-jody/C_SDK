@@ -29,7 +29,7 @@ void SSL_RegSocketCallback(SocketAPI SendFun, SocketAPI ReceiveFun)
 
 SSL_CTX * SSL_CreateCtrl(uint16_t NumSessions)
 {
-	return ssl_ctx_new(SSL_NO_DEFAULT_KEY, NumSessions);
+	return ssl_ctx_new(SSL_NO_DEFAULT_KEY|SSL_SERVER_VERIFY_LATER, NumSessions);
 }
 
 void SSL_FreeCtrl(SSL_CTX *SSLCtrl)
@@ -136,4 +136,20 @@ error:
 #endif
     return SSL_ERROR_NOT_SUPPORTED;
 #endif /* CONFIG_SSL_SKELETON_MODE */
+}
+
+int32_t SSL_VerifyCert(SSL *SSLLink)
+{
+    int ret;
+    int pathLenConstraint = 0;
+
+    ret = x509_verifyEx(SSLLink->ssl_ctx->ca_cert_ctx, SSLLink->x509_ctx,
+            &pathLenConstraint);
+
+    if (ret)        /* modify into an SSL error type */
+    {
+        ret = SSL_X509_ERROR(ret);
+    }
+
+    return ret;
 }

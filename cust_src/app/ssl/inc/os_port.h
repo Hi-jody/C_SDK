@@ -293,7 +293,7 @@ enum
 	true,
 };
 #define DBG			iot_debug_print
-#define TLS_DBG(X, Y...)	iot_debug_print("%s %d:"X, __FUNCTION__, __LINE__, ##Y)
+#define TLS_DBG(X, Y...)	iot_debug_print("TLS %s %d:"X, __FUNCTION__, __LINE__, ##Y)
 #define malloc		iot_os_malloc
 #define realloc		iot_os_realloc
 #define free		iot_os_free

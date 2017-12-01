@@ -106,7 +106,7 @@ time_t OS_TimeToUTCTamp(struct tm *_timeptr)
 
 time_t time(time_t *_timer)
 {
-	int year, days, secs;
+	unsigned int year, days, secs;
 	T_AMOPENAT_SYSTEM_DATETIME DT;
 	iot_os_get_system_datetime(&DT);
 	if (DT.nYear < 2000)
@@ -115,7 +115,7 @@ time_t time(time_t *_timer)
 	}
 	year = DT.nYear - 1970;
 	days = (year + 1) / 4 + 365 * year;
-	days += MONTAB(year)[DT.nMonth] + DT.nDay - 1;
+	days += MONTAB(year)[DT.nMonth - 1] + DT.nDay - 1;
 
 	secs = 3600 * DT.nHour + 60 * DT.nMin + DT.nSec;
 	if (_timer)
