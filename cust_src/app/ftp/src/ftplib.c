@@ -1259,9 +1259,9 @@ static int FtpXfer(const char *localfile, const char *path,
         INT32 iFlag;
 
         if (typ == FTPLIB_FILE_READ)
-            iFlag = FS_O_CREAT|FS_O_WRONLY;
+            iFlag = SF_CREAT|SF_WRONLY;
         else
-            iFlag = FS_O_RDONLY;
+            iFlag = SF_RDONLY;
         local = iot_fs_open_file(localfile, iFlag);
         if (local < 0)
         {

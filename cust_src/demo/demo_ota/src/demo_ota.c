@@ -82,7 +82,7 @@ static UINT32 demo_ota_verify(const char* file)
     T_AMOPENAT_CUST_VTBL vtbl;
 
 
-    fd = iot_fs_open_file(DEMO_OTA_FILE_NAME, FS_O_RDONLY);
+    fd = iot_fs_open_file(DEMO_OTA_FILE_NAME, SF_RDONLY);
 
     if(fd < 0)
     {
@@ -96,8 +96,8 @@ static UINT32 demo_ota_verify(const char* file)
     {
         if(vtbl.magic == 0x87654321)
         {
-            iot_fs_seek_file(fd, 0, FS_SEEK_SET);
-            iRet = iot_fs_seek_file(fd, 0, FS_SEEK_END);
+            iot_fs_seek_file(fd, 0, SF_SEEK_SET);
+            iRet = iot_fs_seek_file(fd, 0, SF_SEEK_END);
             iot_debug_print("[ota] ota file len =%d", iRet);
         }
         else

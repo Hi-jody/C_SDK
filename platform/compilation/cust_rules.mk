@@ -452,7 +452,7 @@ CFG_Lod_File_BINE_BIN := $(shell echo $(LODBASE)flash.lod  | sed 's/.*\(SW_.*\.l
 endif #AM_CONFIG_SUPPORT
 
 ifneq "${AM_PLT_LOD_FILE}" ""
-PLT_LOD_VERSION := $(shell echo ${AM_PLT_LOD_FILE} | sed 's/.*SW_V\([0-9]*\).*\.lod$$/B\1/')
+PLT_LOD_VERSION := $(shell echo ${AM_PLT_LOD_FILE} | sed 's/.*AirM2M_V\([0-9]*\).*\.lod$$/B\1/')
 #/*+\NEW\xiongjunqun\2014.03.25\¿ª·¢open loader*/#
 ifeq ($(strip $(AM_OPENAT_LOADER_SUPPORT)), LOADER)
 WITH_PLT_LOD_FILE := ${BAS_FINAL}_${PLT_LOD_VERSION}.lod

@@ -68,6 +68,8 @@ VOID demo_flash_init(VOID)
 
 VOID app_main(VOID)
 {
+	//开机立刻使用flash，会看不到打印信息
+	iot_os_sleep(400);
     flash_print("[flash] app_main");
 
     demo_flash_init();

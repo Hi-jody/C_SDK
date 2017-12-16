@@ -279,7 +279,7 @@ static void show_file(const char* fnm)
     char data[64+1];
     WCHAR* wfn = malloc((strlen(fnm)+1)*sizeof(WCHAR));
     strtows(wfn, fnm);
-    fd = iot_fs_open_file(wfn, FS_O_RDONLY);
+    fd = iot_fs_open_file(wfn, SF_RDONLY);
 
     if(fd < 0)
     {
@@ -287,11 +287,11 @@ static void show_file(const char* fnm)
         goto end;    
     }
 
-    size = iot_fs_seek_file(fd, 0, FS_SEEK_END);
+    size = iot_fs_seek_file(fd, 0, SF_SEEK_END);
 
     printf("file %s size=%d", fnm, size);
 
-    iot_fs_seek_file(fd, 0, FS_SEEK_SET);
+    iot_fs_seek_file(fd, 0, SF_SEEK_SET);
 
     while(1)
     {

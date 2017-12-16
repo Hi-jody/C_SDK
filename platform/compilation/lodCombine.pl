@@ -316,7 +316,7 @@ sub lod_combine_process
     my $input_file_eof = 0;
     my $checksum = 0;
     my $OUTPUT;
-    
+
     open( INPUT, "<$platform_lod_file" ) or die "Cannot open input platform lod file: $platform_lod_file\n";
     open( COMBINE, "<$combine_file" ) or die "Cannot open $combine_type combine file: $combine_file\n";
     open( $OUTPUT, ">$output_lod_file" ) or die "Cannot open output combined lod file: $output_lod_file\n";
@@ -408,6 +408,7 @@ sub lod_combine_process
         my $first_addr = 0;
         my $last_addr = 0;
         seek(COMBINE, 0, 0);
+		
         while( defined( $line = <COMBINE> ) )
         { 
             $line =~ s/^[\s]+//g;#将开头的空白字符去掉
@@ -459,6 +460,8 @@ sub lod_combine_process
         #print OUTPUT "#\$$item=$tags_hash{$item}\r\n";
         output_lod($OUTPUT, "#\$$item=$tags_hash{$item}", \$checksum);
     }
+	
+	
     #输出combine_addr之前的数据
     while($addr < $combine_addr)
     {
@@ -480,7 +483,6 @@ sub lod_combine_process
         }
     }
     dbg_out(5, "befor finish");
-    
     #将原来lod文件的数据丢弃掉
     dbg_out(5, "$addr,$combine_addr,$combine_size");
     while($addr < ($combine_addr + $combine_size))
@@ -508,6 +510,7 @@ sub lod_combine_process
     #有两个情况，一个是amc/lua这样的文件转换，一个是lod文件。
     #$combine_addr会被修改
     dbg_out(5, "Combine start ==========>>>>>>>>>>>>>>>>>>");
+	
     if(BIN_MODE == $combine_type_hash{$combine_type}[0])
     {
         my $buf;
