@@ -762,6 +762,9 @@ typedef struct
 typedef void (*PHOST_MESSAGE)(UINT8 *pData, UINT32 length);
 /*-\NEW\liweiqiang\2013.12.25\添加host uart发送数据功能 */
 
+#define OPENAT_LAYER_COUNT 3
+
+
 /************************************************
 * LCD
 ************************************************/
@@ -838,6 +841,26 @@ typedef struct
     }lcdItf;
 /*-\NEW\liweiqiang\2013.3.28\增加串口彩屏接口 */
 }T_AMOPENAT_COLOR_LCD_PARAM;
+
+
+typedef enum E_OPENAT_LCD_LAYER_FORMAT_TAG
+{
+    OPENAT_LAYER_FORMAT_RGB565,
+    OPENAT_LAYER_FORMAT_RGBA,
+}E_OPENAT_LCD_LAYER_FORMAT;
+
+
+typedef struct E_OPENAT_LCD_LAYER_INFO_tag
+{   
+    E_OPENAT_LCD_LAYER_FORMAT format;
+    T_AMOPENAT_LCD_RECT_T     rect;
+    uint8*                    buffer;
+    BOOL                      used;
+    BOOL                      visible;
+}E_OPENAT_LCD_LAYER_INFO;
+
+
+
 
 /************************************************
 * SPI
@@ -965,6 +988,9 @@ typedef struct T_AMOPENAT_CAMERA_PARAM_TAG
 
 typedef struct T_AMOPENAT_CAM_PREVIEW_PARAM_TAG
 {
+    UINT16      offsetX;
+    UINT16      offsetY;
+    
     UINT16      startX;
     UINT16      startY;
     UINT16      endX;
@@ -1211,7 +1237,7 @@ typedef enum E_AMOPENAT_PLAY_FILE_FORMAT_TAG
 typedef struct T_AMOPENAT_PLAY_FILE_PARAM_TAG
 {
 /*+\BUG WM-719\maliang\2013.3.21\文件系统接口和播放音频文件接口的文件名改为unicode little ending类型*/
-    WCHAR* fileNameUniLe;        /* 文件名使用unicode编码 little endian方式表示 */
+    char* fileName;        /* 文件名使用unicode编码 little endian方式表示 */
 /*-\BUG WM-719\maliang\2013.3.21\文件系统接口和播放音频文件接口的文件名改为unicode little ending类型*/
 /*+\NewReq WM-702\maliang\2013.3.15\播放音频文件的接口增加一个参数，用来表示文件类型*/
     E_AMOPENAT_PLAY_FILE_FORMAT  fileFormat;

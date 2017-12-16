@@ -5,9 +5,9 @@
 #include "iot_flash.h"
 
 #define fs_print iot_debug_print
-#define DEMO_FS_FILE_PATH L"demo_file"
+#define DEMO_FS_FILE_PATH "demo_file"
 
-VOID demo_fs_delete(WCHAR* file)
+VOID demo_fs_delete(char* file)
 {
     INT32 err;
 
@@ -19,7 +19,7 @@ VOID demo_fs_delete(WCHAR* file)
     fs_print("[fs] delete demo_file");
 }
 
-BOOL demo_fs_create(WCHAR* file)
+BOOL demo_fs_create(char* file)
 {
     INT32 fd;
 
@@ -40,7 +40,7 @@ BOOL demo_fs_create(WCHAR* file)
     return TRUE;
 }
 
-VOID demo_fs_read(WCHAR* file)
+VOID demo_fs_read(char* file)
 {
     INT32 fd;
     UINT8 read_buff[64] = {0};
@@ -61,7 +61,7 @@ VOID demo_fs_read(WCHAR* file)
     iot_fs_close_file(fd);
 }
 
-VOID demo_fs_write(WCHAR* file)
+VOID demo_fs_write(char* file)
 {
     INT32 fd;
     UINT8 *write_buff = "hello world";

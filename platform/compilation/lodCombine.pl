@@ -30,7 +30,7 @@ use File::Find;
 use Getopt::Long;
 use File::Basename;
 
-my $g_dbg_level = "0";
+my $g_dbg_level = "5";
    #0 No debug info
    #1 Main
    #2 Subroutines

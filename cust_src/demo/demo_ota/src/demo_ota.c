@@ -77,14 +77,12 @@ static BOOL demo_ota_download(const char* file)
 static UINT32 demo_ota_verify(const char* file)
 {
     INT32 fd, ret;
-    WCHAR wfile[128] = {0};
     INT32 iRet;
 
     T_AMOPENAT_CUST_VTBL vtbl;
 
-    iot_strtows(wfile, DEMO_OTA_FILE_NAME);
 
-    fd = iot_fs_open_file(wfile, FS_O_RDONLY);
+    fd = iot_fs_open_file(DEMO_OTA_FILE_NAME, FS_O_RDONLY);
 
     if(fd < 0)
     {
@@ -119,12 +117,7 @@ static UINT32 demo_ota_verify(const char* file)
 }
 static VOID demo_ota_upgrade(UINT32 appsize)
 {
-
-    WCHAR wfile[128] = {0};
-
-    iot_strtows(wfile, DEMO_OTA_FILE_NAME);
-
-    if(iot_ota_newapp(wfile))
+    if(iot_ota_newapp(DEMO_OTA_FILE_NAME))
     {
         iot_debug_print("[ota] set upgrade success");
         iot_debug_print("[ota] restart system for upgrade....");

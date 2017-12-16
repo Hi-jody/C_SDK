@@ -246,7 +246,7 @@ static void demo_gethostbyname(void)
 {
     //”Ú√˚Ω‚Œˆ
 
-    char *name = "www.openluat.com";
+    char *name = "7xjwm8.com2.z0.glb.qiniucdn.com";
     struct hostent *hostentP = NULL;
     char *ipAddr = NULL;
 
@@ -345,5 +345,6 @@ void demo_socket_init(void)
 
 VOID app_main(VOID)
 {
+  iot_debug_set_fault_mode(OPENAT_FAULT_HANG);
     demo_socket_init();
 }

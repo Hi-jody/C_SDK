@@ -212,7 +212,7 @@ typedef struct T_AMOPENAT_INTERFACE_VTBL_TAG
     *******************************************/
     INT32 (*open_file)(                             /* 打开文件接口 *//* 正常句柄返回值从0开始，小于0错误发生 */
 /*+\BUG WM-719\maliang\2013.3.21\文件系统接口和播放音频文件接口的文件名改为unicode little ending类型*/
-                            WCHAR* pszFileNameUniLe,/* 文件全路径名称 unicode little endian*/
+                            char* pcFileName,       /* 文件全路径名称 unicode little endian*/
                             UINT32 iFlag,           /* 打开标志 */
 	                        UINT32 iAttr            /* 文件属性，暂时不支持，请填入0 */
                       );
@@ -238,35 +238,39 @@ typedef struct T_AMOPENAT_INTERFACE_VTBL_TAG
                             UINT8 iOrigin           /* 偏移起始位置 */
                       );
     INT32 (*create_file)(                           /* 创建文件接口 */
-                            WCHAR* pszFileNameUniLe,/* 文件全路径名称 unicode little endian*/
+                            char* pcFileName,       /* 文件全路径名称 unicode little endian*/
                             UINT32 iAttr            /* 文件属性，暂时不支持，请填入0 */
                         );
     INT32 (*delete_file)(                           /* 删除文件接口 */
-                            WCHAR* pszFileNameUniLe/* 文件全路径名称 unicode little endian*/
+                            char* pcFileName        /* 文件全路径名称 unicode little endian*/
                         );
+    INT32 (*rename_file)(                           /*文件重命名接口*/
+                            char* pcOldName, 
+                            char* pcNewName
+                         );
     INT32 (*change_size)(
                         INT32 iFd,
                         UINT32 uSize
                     );
     INT32 (*change_dir)(                            /* 切换当前工作目录接口 */
-                            WCHAR* pszDirNameUniLe  /* 目录路径 unicode little endian */
+                            char* pcDirName       /* 目录路径 unicode little endian */
                        );
     INT32 (*make_dir)(                              /* 创建目录接口 */
-                            WCHAR* pszDirNameUniLe, /* 目录路径 unicode little endian */
+                            char* pcDirName,        /* 目录路径 unicode little endian */
                             UINT32 iMode            /* 目录属性，详细请参见 E_AMOPENAT_FILE_ATTR */
                      );
     INT32 (*remove_dir)(                            /* 删除目录接口 *//* 该目录必须为空，接口才能返回成功 */
-                            WCHAR* pszDirNameUniLe  /* 目录路径 unicode little endian */
+                            char* pcDirName         /* 目录路径 unicode little endian */
                        );
     INT32 (*remove_dir_rec)(                        /* 递归删除目录接口 *//* 该目录下所有文件、目录都会被删除 */
-                            WCHAR* pszDirNameUniLe  /* 目录路径 unicode little endian */
+                            char* pcDirName         /* 目录路径 unicode little endian */
                            );
     INT32 (*get_current_dir)(                       /* 获取当前目录接口 */
-                            WCHAR* pCurDirUniLe,    /* 存储目录信息 unicode little endian */
+                            char* pcCurDir,    /* 存储目录信息 unicode little endian */
                             UINT32 uUnicodeSize     /* 存储目录信息空间大小 */
                             );
     INT32 (*find_first_file)(                       /* 查找文件接口 */
-                            WCHAR* pszFileNameUniLe,/* 目录路径或文件全路径 unicode little endian */
+                            char* pszFileNameUniLe,/* 目录路径或文件全路径 unicode little endian */
 /*-\BUG WM-719\maliang\2013.3.21\文件系统接口和播放音频文件接口的文件名改为unicode little ending类型*/
                             PAMOPENAT_FS_FIND_DATA  pFindData /* 查找结果数据 */
                             );
@@ -313,7 +317,7 @@ typedef struct T_AMOPENAT_INTERFACE_VTBL_TAG
 								); 
 	
 	BOOL  (*flash_set_newapp)(/*设置新APP存储地址*/
-								CONST WCHAR* file/*新APP存储地址*/
+								CONST char* file/*新APP存储地址*/
 								);
     
     /*******************************************
@@ -712,6 +716,44 @@ typedef struct T_AMOPENAT_INTERFACE_VTBL_TAG
                             T_AMOPENAT_LCD_RECT_T* rect,        /* 需要刷新的区域 */
                             UINT16 *pDisplayBuffer              /* 刷新的缓冲区 */
                                    );
+    VOID (*set_layer_visible)(
+                            BOOL layerVisible[OPENAT_LAYER_COUNT]
+                            );
+    
+    BOOL (*create_layer)(
+                            UINT32 layer_id, 
+                            E_OPENAT_LCD_LAYER_FORMAT format, 
+                            T_AMOPENAT_LCD_RECT_T*  rect
+                            );
+
+    VOID (*destory_layer)(
+                            UINT32 layer_id
+                         );
+
+    UINT8* (*set_active_layer)(
+                               UINT32 layer_id
+                               );
+
+    
+    UINT8* (*set_layer_format)(
+                               UINT32 layer_id,
+                               E_OPENAT_LCD_LAYER_FORMAT format
+                               );
+
+    
+    UINT32 (*get_active_layer)(VOID);
+
+    
+    VOID (*set_layer_start_pos)(
+                                UINT32 layer_id, 
+                                UINT32 startX, 
+                                UINT32 startY
+                                );
+
+    E_OPENAT_LCD_LAYER_INFO* (*get_layer_info)(
+                                              UINT32 layer_id
+                                              );
+											  
     /****************************** CAMERA ******************************/
     BOOL (*camera_init)(                                        /* 摄像头初始化接口 */
                         T_AMOPENAT_CAMERA_PARAM *cameraParam    /* 摄像头初始化参数 */
@@ -788,6 +830,9 @@ typedef struct T_AMOPENAT_INTERFACE_VTBL_TAG
                             PTOUCHSCREEN_MESSAGE pTouchScreenMessage /* 触屏消息回调函数 */
                             );
 
+    VOID (*touchScreenSleep)(                                   /* 触摸屏睡眠接口 */
+                            BOOL sleep                          /* 是否要睡眠 */
+                            );
     /******************************** PSAM ***********************************/
     /* 注意:::PSAM卡接口在操作设备时会导致调用者被挂起，直到设备有响应或者2s+超时 */
     E_AMOPENAT_PSAM_OPER_RESULT (*open_psam)(                   /* 打开psam */
@@ -1124,13 +1169,25 @@ typedef struct T_AMOPENAT_INTERFACE_VTBL_TAG
                             BOOL flymode
                           );   
 
-    INT32 (*imgs_decode)(
-                                CONST UINT16 * filename,
+    INT32 (*imgs_decode_jpeg)(
+                                CONST char * filename,
                                 T_AMOPENAT_IMAGE_INFO *imageinfo
                             );
-    INT32 (*imgs_free_decodedata)(
+    
+    INT32 (*imgs_free_jpeg_decodedata)(
                                     UINT16* buffer
-                            );                             
+                            );      
+
+    BOOL (*imgs_decode_png)(
+                            UINT8* buffer,
+                            UINT32 size,
+                            UINT16 x, 
+                            UINT16 y, 
+                            UINT16 left, 
+                            UINT16 top, 
+                            UINT16 right, 
+                            UINT16 bottom
+                          );
 }T_AMOPENAT_INTERFACE_VTBL;
 
 /*+\BUG WM-656\lifei\2013.03.07\[OpenAT] 修改cust区域检查条件*/

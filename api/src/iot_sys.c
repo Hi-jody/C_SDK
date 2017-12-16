@@ -6,7 +6,7 @@
 *@return	TRUE: ³É¹¦   FALSE: Ê§°Ü
 **/
 BOOL iot_ota_newapp(              
-                    CONST WCHAR* newAPPFile
+                    CONST char* newAPPFile
                )
 {
     return IVTBL(flash_set_newapp)(newAPPFile);

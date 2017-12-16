@@ -10,7 +10,7 @@
 *@return	INT32: 	    返回文件句柄
 **/
 INT32 iot_fs_open_file(                          
-                        WCHAR* pszFileNameUniLe,
+                        char* pszFileNameUniLe,
                         UINT32 iFlag          
                   )
 {
@@ -90,7 +90,7 @@ INT32 iot_fs_seek_file(
 *@return	INT32: 	            返回文件句柄, 小于0表示失败,其余成功
 **/
 INT32 iot_fs_create_file(                        
-                        WCHAR* pszFileNameUniLe       
+                        char* pszFileNameUniLe       
                     )
 {
     return IVTBL(create_file)(pszFileNameUniLe, 0);
@@ -101,7 +101,7 @@ INT32 iot_fs_create_file(
 *@return	INT32: 	            返回值小于0表示失败,其余成功
 **/
 INT32 iot_fs_delete_file(                         
-                        WCHAR* pszFileNameUniLe
+                        char* pszFileNameUniLe
                     )
 {
     return IVTBL(delete_file)(pszFileNameUniLe);
@@ -125,7 +125,7 @@ INT32 iot_fs_change_size(
 *@return	INT32: 	返回值小于0表示失败,其余成功
 **/
 INT32 iot_fs_change_dir(                         
-                        WCHAR* pszDirNameUniLe  
+                        char* pszDirNameUniLe  
                    )
 {
     return IVTBL(change_dir)(pszDirNameUniLe);
@@ -137,7 +137,7 @@ INT32 iot_fs_change_dir(
 *@return	INT32: 	返回值小于0表示失败,其余成功
 **/
 INT32 iot_fs_make_dir(                            
-                        WCHAR* pszDirNameUniLe,
+                        char* pszDirNameUniLe,
                         UINT32 iMode            
                  )
 {
@@ -149,21 +149,10 @@ INT32 iot_fs_make_dir(
 *@return	INT32: 	返回值小于0表示失败,其余成功
 **/
 INT32 iot_fs_remove_dir(                            
-                        WCHAR* pszDirNameUniLe  
+                        char* pszDirNameUniLe  
                    )
 {
     return IVTBL(remove_dir)(pszDirNameUniLe);
-}
-
-/**递归删除目录
-*@param		pszDirNameUniLe:	目录路径,该目录下所有文件、目录都会被删除 
-*@return	INT32: 	返回值小于0表示失败,其余成功
-**/
-INT32 iot_fs_remove_dir_rec(                        
-                        WCHAR* pszDirNameUniLe  
-                       )
-{
-    return IVTBL(remove_dir_rec)(pszDirNameUniLe);
 }
 
 /**获取当前路径
@@ -172,49 +161,13 @@ INT32 iot_fs_remove_dir_rec(
 *@return	INT32: 	返回值小于0表示失败,其余成功
 **/
 INT32 iot_fs_get_current_dir(                      
-                        WCHAR* pCurDirUniLe,  
+                        char* pCurDirUniLe,  
                         UINT32 uUnicodeSize    
                         )
 {
     return IVTBL(get_current_dir)(pCurDirUniLe, uUnicodeSize);
 }
 
-/**查找文件
-*@param		pszFileNameUniLe:	目录路径
-*@param		pFindData:	        查找结果数据
-*@return	INT32: 	            返回文件句柄,小于0表示失败,其余成功
-**/
-INT32 iot_fs_find_first_file(                  
-                        WCHAR* pszFileNameUniLe,
-                        PAMOPENAT_FS_FIND_DATA  pFindData 
-                        )
-{
-    return IVTBL(find_first_file)(pszFileNameUniLe, pFindData);
-}
-
-/**继续查找文件
-*@param		iFd:	            查找文件句柄
-*@param		pFindData:	        查找结果数据
-*@return	INT32: 	返回值小于0表示失败,其余成功
-**/
-INT32 iot_fs_find_next_file(                        
-                        INT32 iFd,             
-                        PAMOPENAT_FS_FIND_DATA  pFindData 
-                       )
-{
-    return IVTBL(find_next_file)(iFd, pFindData);
-}
-
-/**查找结束
-*@param		iFd:	            查找文件句柄
-*@return	INT32: 	返回值小于0表示失败,其余成功
-**/
-INT32 iot_fs_find_close(                   
-                        INT32 iFd             
-                   )
-{
-    return IVTBL(find_close)(iFd);
-}
 
 /**获取文件系统信息
 *@param		devName:	查找文件句柄

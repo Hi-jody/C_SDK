@@ -44,34 +44,26 @@
 /****************************** FILE SYSTEM ******************************/
 typedef enum E_AMOPENAT_FILE_OPEN_FLAG_TAG
 {
-    FS_O_RDONLY     = 0x00, /* Read only. */
-    FS_O_WRONLY	    = 0x01, /* Write only. */
-    FS_O_RDWR       = 0x02, /* Read and Write. */
-    FS_O_ACCMODE    = 0x03, /* Access. */
-
-    // If the file exists, this flag has no effect except as noted under FS_O_EXCL below. Otherwise, the file shall be created.
-    FS_O_CREAT      = 0100,
-
-    // If FS_O_CREAT and FS_O_EXCL are set, the function shall fail if the file exists.
-    FS_O_EXCL       = 00200,
-
-    // If the file exists, and is a regular file, and the file is successfully opened FS_O_WRONLY or FS_O_RDWR, its length shall be truncated to 0.
-    FS_O_TRUNC      = 01000,
-
-    // If set, the file offset shall be set to the end of the file prior to each write.
-    FS_O_APPEND     = 02000,
+    SF_APPEND = (1 << 0),
+    SF_TRUNC  = (1 << 1),
+    SF_CREAT =  (1 << 2),
+    SF_RDONLY = (1 << 3),
+    SF_WRONLY = (1 << 4),
+    SF_RDWR = (SF_RDONLY | SF_WRONLY),
+    SF_DIRECT = (1 << 5),
+    SF_EXCL  =(1 << 6)
 }E_AMOPENAT_FILE_OPEN_FLAG;
 
 typedef enum E_AMOPENAT_FILE_SEEK_FLAG_TAG
 {
     // Seek from beginning of file.
-    FS_SEEK_SET = 0,
+    SF_SEEK_SET = 0,
 
     // Seek from current position.
-    FS_SEEK_CUR = 1,
+    SF_SEEK_CUR = 1,
 
     // Set file pointer to EOF plus "offset"
-    FS_SEEK_END = 2,
+    SF_SEEK_END = 2,
 }E_AMOPENAT_FILE_SEEK_FLAG;
 
 #define OPENAT_VALIDATE_FILE_HANDLE_START 0
@@ -131,7 +123,7 @@ typedef enum E_AMOPENAT_FS_ERR_CODE_TAG
     ERR_FS_UNMOUNT_FAILED               = -4200021,
     ERR_FS_NO_MORE_MEMORY               = -4200025,
     ERR_FS_DEVICE_NOT_REGISTER          = -4200027,
-    ERR_FS_DISK_FULL                    = -4200030,
+    SF_ERR_FULL                         = -4200030,
     ERR_FS_NOT_FORMAT                   = -4200032,
     ERR_FS_HAS_FORMATED                 = -4200033,
     ERR_FS_NOT_FIND_SB                  = -4200035,

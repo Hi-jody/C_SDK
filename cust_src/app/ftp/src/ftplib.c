@@ -1257,22 +1257,18 @@ static int FtpXfer(const char *localfile, const char *path,
     if (localfile != NULL)
     {
         INT32 iFlag;
-        WCHAR* wfile = malloc((strlen(localfile)+1)*sizeof(WCHAR));
 
-        strtows(wfile, localfile);
         if (typ == FTPLIB_FILE_READ)
             iFlag = FS_O_CREAT|FS_O_WRONLY;
         else
             iFlag = FS_O_RDONLY;
-        local = iot_fs_open_file(wfile, iFlag);
+        local = iot_fs_open_file(localfile, iFlag);
         if (local < 0)
         {
             strncpy(nControl->response, "can't open file",
                         sizeof(nControl->response));
-            free(wfile);
             return 0;
         }
-        free(wfile);
     }
     if (local < 0)
 	    return 0;
