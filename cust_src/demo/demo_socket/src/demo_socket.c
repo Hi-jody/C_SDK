@@ -92,6 +92,7 @@ static void demo_socket_tcp_client()
     int socketfd, ret, err;
     struct timeval tm;
     fd_set readset;
+    int optLen = 4, sendBufSize;
 
     tm.tv_sec = 2;
     tm.tv_usec = 0;
@@ -100,6 +101,16 @@ static void demo_socket_tcp_client()
 
     if (socketfd >= 0)
     {
+        ret = getsockopt(socketfd, SOL_SOCKET, SO_SNDWNDBUF, (void*)&sendBufSize, (socklen_t*)&optLen);
+
+        if(ret < 0)
+        {
+            socket_dbg("[socket] getsockopt error = %d", ret);
+        }
+        else
+        {
+            socket_dbg("[socket] getsockopt original SO_SNDBUF = %d", sendBufSize);
+        }
         while(1)
         {
             ret = demo_socket_tcp_send(socketfd);
@@ -116,6 +127,17 @@ static void demo_socket_tcp_client()
 					iot_os_sleep(10);
 					continue;
 				}
+            }
+
+            ret = getsockopt(socketfd, SOL_SOCKET, SO_SNDWNDBUF, (void*)&sendBufSize, (socklen_t*)&optLen);
+
+            if(ret < 0)
+            {
+                socket_dbg("[socket] getsockopt error = %d", ret);
+            }
+            else
+            {
+                socket_dbg("[socket] getsockopt after send SO_SNDBUF = %d", sendBufSize);
             }
             FD_ZERO(&readset);
             FD_SET(socketfd, &readset);
@@ -137,6 +159,17 @@ static void demo_socket_tcp_client()
             else if(ret == 0)
             {
                 socket_dbg("[socket] select timeout");
+            }
+
+            ret = getsockopt(socketfd, SOL_SOCKET, SO_SNDWNDBUF, (void*)&sendBufSize, (socklen_t*)&optLen);
+
+            if(ret < 0)
+            {
+                socket_dbg("[socket] getsockopt error = %d", ret);
+            }
+            else
+            {
+                socket_dbg("[socket] getsockopt after recv SO_SNDBUF = %d", sendBufSize);
             }
         }
         close(socketfd);
@@ -246,7 +279,7 @@ static void demo_gethostbyname(void)
 {
     //ÓòÃû½âÎö
 
-    char *name = "7xjwm8.com2.z0.glb.qiniucdn.com";
+    char *name = "www.baidu.com";
     struct hostent *hostentP = NULL;
     char *ipAddr = NULL;
 

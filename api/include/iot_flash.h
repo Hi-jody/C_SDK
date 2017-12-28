@@ -12,9 +12,9 @@
 * flash接口示例
 */ 
 
-/**获取flash可用的地址空间，返回的地址用来传入iot_flash_erase\iot_flash_write\iot_flash_read等接口。
-*@param		addrout[out]:	返回可用flash地址
-*@param		lenout[out]:	返回可用flash长度，单位为字节
+/**获取flash可用的地址空间，返回的地址用来传入iot_flash_erase、iot_flash_write、iot_flash_read等接口。
+*@param		addrout:	返回可用flash地址
+*@param		lenout:	返回可用flash长度，单位为字节
 *@return	E_AMOPENAT_MEMD_ERR: 	成功:OPENAT_MEMD_ERR_NO, 其余失败
 *@note      该接口返回的地址是64KB对齐 返回的地址空间根据当前程序大小来确定。
 

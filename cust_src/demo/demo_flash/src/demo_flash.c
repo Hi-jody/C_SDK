@@ -37,16 +37,16 @@ VOID demo_flash_write(VOID)
     flash_print("[flash] write_len %x, write_buff %s", write_len, write_buff);
 }
 
-VOID demo_flash_erace(VOID)
+VOID demo_flash_erase(VOID)
 {
     E_AMOPENAT_MEMD_ERR errCode;
-    flash_print("[flash] erace {%x,%x}", 
+    flash_print("[flash] erase {%x,%x}", 
         DEMO_FLASH_BEGIN_ADDR, DEMO_FLASH_END_ADDR);
     errCode = iot_flash_erase(DEMO_FLASH_BEGIN_ADDR, DEMO_FLASH_END_ADDR);
 
     if (OPENAT_MEMD_ERR_NO != errCode)
     {
-        flash_print("[flash] erace {%x,%x} error %d", 
+        flash_print("[flash] erase {%x,%x} error %d", 
         DEMO_FLASH_BEGIN_ADDR, DEMO_FLASH_END_ADDR, errCode);
     }
 }
@@ -54,15 +54,20 @@ VOID demo_flash_erace(VOID)
 
 VOID demo_flash(VOID)
 {
-    demo_flash_erace(); // ²Áflash
+    demo_flash_erase(); // ²Áflash
     demo_flash_write(); // Ð´flash
     demo_flash_read();  // ¶Áflash
 }
 
 VOID demo_flash_init(VOID)
 {
-    iot_flash_getaddr(&s_demo_flash_begain_addr, NULL);
-    s_demo_flash_end_addr = s_demo_flash_begain_addr + 0x10000;
+    //iot_flash_getaddr(&s_demo_flash_begain_addr, NULL);
+    s_demo_flash_begain_addr = 0x882f3000;
+    s_demo_flash_end_addr = s_demo_flash_begain_addr + 0x1000;
+    demo_flash();
+
+    s_demo_flash_begain_addr = 0x882f4000;
+    s_demo_flash_end_addr = s_demo_flash_begain_addr + 0x1000;
     demo_flash();
 }
 

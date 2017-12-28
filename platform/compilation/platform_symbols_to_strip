@@ -230,5 +230,6 @@ send
 sendto
 select
 setsockopt
+getsockopt
 close
 gethostbyname

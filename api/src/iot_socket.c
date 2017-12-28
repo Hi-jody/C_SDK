@@ -57,7 +57,28 @@ int setsockopt(int socketfd,
                         socklen_t optlen)
 {
     return IVTBL(setsockopt)(socketfd, level, optname, optval_p, optlen);
-}                        
+}                 
+
+/**获取socket的属性
+*@param   socketfd: 调用socket接口返回的socket描述符
+@param      level: 支持SOL_SOCKET/IPPROTO_TCP
+@param      optname:  SOL_SOCKET对应optname为 SO_DEBUG/SO_OOBINLINE/SO_SNDTIMEO/SO_RCVTIMEO/SO_RCVBUF/SO_SNDBUF
+                      IPPROTO_TCP对应optname为 SO_TCP_SACKDISABLE/SO_TCP_NODELAY
+@param      optval_p:
+@param      optlen_p:
+*@return  0:  表示成功
+            <0  表示有错误
+*
+**/          
+
+int getsockopt(int socketfd, 
+                        int level, 
+                        int optname,
+                        void *optval_p, 
+                        socklen_t* optlen_p)
+{
+    return IVTBL(getsockopt)(socketfd, level, optname, optval_p, optlen_p);
+}       
 /**设置socket的本地端口和ip地址，一般针对服务器代码需要设置
 *@param		socketfd:	调用socket接口返回的socket描述符
 @param      my_addr:   ip地址和端口，ip一般设置INADDR_ANY

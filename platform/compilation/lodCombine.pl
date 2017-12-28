@@ -30,7 +30,7 @@ use File::Find;
 use Getopt::Long;
 use File::Basename;
 
-my $g_dbg_level = "5";
+my $g_dbg_level = "0";
    #0 No debug info
    #1 Main
    #2 Subroutines
@@ -387,7 +387,7 @@ sub lod_combine_process
     }
     $combine_size = hex($tags_hash{$combine_type_hash{$combine_type}[2]});
     dbg_out(5, "combine_addr=$combine_addr, combine_size=$combine_size");
-    
+
     # step 3
     #检查 $combine_addr 的合法性
     #读取要合并的文件，看看是否超出可以使用的区域
@@ -451,7 +451,7 @@ sub lod_combine_process
             goto ERROR;
         }
     }
-    
+
     # step 4
     #合并输出，并计算checksum
     #输出头信息
@@ -459,13 +459,13 @@ sub lod_combine_process
     {
         #print OUTPUT "#\$$item=$tags_hash{$item}\r\n";
         output_lod($OUTPUT, "#\$$item=$tags_hash{$item}", \$checksum);
-    }
-	
+    }	
 	
     #输出combine_addr之前的数据
     while($addr < $combine_addr)
     {
         $line = sprintf("@%08x", $addr);#需要补0
+        my $endfile = 0;
         #print OUTPUT "$line\r\n";
         output_lod($OUTPUT, $line, \$checksum);
         while( defined( $line = <INPUT> ) )
@@ -478,11 +478,24 @@ sub lod_combine_process
                 $addr = hex($1);
                 last;
             }
+            if($line =~ /^#checksum/)
+            {
+                #文件结束了
+                dbg_out(5, "platform lod last");
+                $endfile = 1;
+                last;
+            }
             #print OUTPUT "$line\r\n";
             output_lod($OUTPUT, $line, \$checksum);
         }
+
+        if ($endfile == 1)
+        {
+            last;
+        }
     }
     dbg_out(5, "befor finish");
+
     #将原来lod文件的数据丢弃掉
     dbg_out(5, "$addr,$combine_addr,$combine_size");
     while($addr < ($combine_addr + $combine_size))
@@ -553,15 +566,6 @@ sub lod_combine_process
             }
         }
         #补齐该sector
-=cut
-        while($write_size < $sector_size)
-        {
-            $line = "ffffffff";
-            #print OUTPUT "$line\r\n";
-            output_lod($OUTPUT, $line, \$checksum);
-            $write_size += 4;
-        }
-=cut
     }
     elsif(LOD_MODE == $combine_type_hash{$combine_type}[0])
     {

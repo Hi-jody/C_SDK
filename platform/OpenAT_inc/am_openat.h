@@ -294,7 +294,7 @@ typedef struct T_AMOPENAT_INTERFACE_VTBL_TAG
                        );
     /*-\NewReq\Jack.li\2013.1.17\增加T卡接口*/
 
-    E_AMOPENAT_MEMD_ERR (*flash_erase)(              /*flash擦写 64K对齐*/
+    E_AMOPENAT_MEMD_ERR (*flash_erase)(              /*flash擦写 64K/4KB对齐*/
                             UINT32 startAddr,
                             UINT32 endAddr
                        );
@@ -1111,6 +1111,11 @@ typedef struct T_AMOPENAT_INTERFACE_VTBL_TAG
                             int optname,
                             void *optval_p, 
                             socklen_t optlen);
+    int (*getsockopt) (int socketfd, 
+                            int level, 
+                            int optname,
+                            void *optval_p, 
+                            socklen_t* optlen);
     int (*bind) (int socketfd, 
                           const struct sockaddr *my_addr, 
                           socklen_t addrlen);

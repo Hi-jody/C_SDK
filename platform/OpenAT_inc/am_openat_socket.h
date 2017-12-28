@@ -88,6 +88,7 @@ typedef enum SocketTypeTag
 #define	SO_ERROR	0x1007		/* get error status and clear */
 #define	SO_TYPE		0x1008		/* get socket type */
 #define	SO_PRIVSTATE	0x1009		/* get/deny privileged state */
+#define SO_SNDWNDBUF	0x1010		/* send window buffer size */
 
 /*
  * Structure used for manipulating linger option.
