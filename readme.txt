@@ -61,3 +61,7 @@ V1.4.1修改记录
 1. 增加getsockopt接口
 2. 支持iot_flash_erase接口支持4KB对其擦除
 3. 更新《Luat_IoT_SDK_C语言编程手册》
+V1.4.2修改记录
+-----------------------
+1.基础版本升级到V4837
+2. 修改多task socket select操作可能导致task被阻塞
