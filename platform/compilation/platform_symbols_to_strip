@@ -233,3 +233,16 @@ setsockopt
 getsockopt
 close
 gethostbyname
+__make_dp
+__extendsfdf2
+__unpack_f
+__pack_f
+__thenan_sf
+__subsf3
+__floatsidf
+__adddf3
+__floatsisf
+__fpcmp_parts_d
+__gedf2
+__subdf3
+__addsf3

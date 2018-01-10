@@ -11,7 +11,8 @@ LOCAL_API_DEPENDS := \
 LOCAL_ADD_INCLUDE := \
                     platform/std_inc \
                     platform/OpenAT_inc \
-					api/include
+					api/include \
+					cust_src/demo/demo_gps/include 
 
 
 # Set this to any non-null string to signal a module which 
